@@ -1,0 +1,29 @@
+[package]
+name = "katwebsite"
+license = "MIT"
+version = "0.1.0"
+#repository = "https://github.com/katattakd"
+authors = ["katattakd <katattakd@pm.me>"]
+description = "A static site generator, and fast web server designed to fit the needs of most sites. More information is available in the project's GitHub repository."
+categories = ["network-programming", "web-programming::http-server", "web-programming::websocket", "command-line-utilities", "text-processing"]
+edition = '2018'
+
+[dependencies]
+actix-web = "4.0.0-beta.1"
+actix-files = "0.6.0-beta.1"
+env_logger = "0.8.2"
+exitcode = "1.1.2"
+log = { version = "0.4.13", features = ["release_max_level_info"] }
+toml = "0.5.8"
+serde = "1.0.119"
+serde_derive = "1.0.119"
+
+[profile.dev]
+rpath = true
+
+[profile.release]
+lto = true
+panic = 'abort'
+
+[profile.bench]
+lto = true
