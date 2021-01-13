@@ -20,7 +20,6 @@ struct Server {
 }
 
 // TODO:
-// - setup GitHub repo
 // - finish implementing web server
 //   - consider implementing file listing
 //   - implement configurable redirects
