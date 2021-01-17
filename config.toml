@@ -3,8 +3,8 @@
 host = "localhost" # The Host header that this vhost serves. Must be an exact match.
 
 [[vhost.redir]]
-mount = "/redir"
-dest = "https://example.com"
+target = "/redir" # The location this redirect targets (ex: /redir would target example.com/redir). Supports wildcards.
+dest = "https://example.com" # The URL this redirects to.
 permanent = false # If the redirect should be permanent (ex: redirecting from an old domain to a new one), or temporary (ex: link shortening or a "coming soon" page).
 
 [[vhost.files]]

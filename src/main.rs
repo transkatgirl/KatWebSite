@@ -1,3 +1,5 @@
+#![warn(clippy::all)]
+
 use actix_web::{get, web, guard, body::{Body, ResponseBody}, dev::ServiceResponse, http::{header, header::{ContentType, IntoHeaderValue}, Method, StatusCode}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash, ErrorHandlers, ErrorHandlerResponse}, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use std::{process, fs, collections::BTreeMap, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}};
 use serde_derive::Deserialize;
@@ -25,7 +27,7 @@ struct Files {
 
 #[derive(Deserialize,Clone,Debug)]
 struct Redir {
-	mount: String,
+	target: String,
 	dest: String,
 	permanent: bool,
 }
@@ -38,7 +40,6 @@ struct Server {
 
 // TODO:
 // - finish implementing web server
-//   - cleanup HttpServer generation
 //   - implement form handling
 //   - implement http auth
 //   - implement https + hsts
@@ -57,7 +58,7 @@ fn render_error<B>(mut res: ServiceResponse<B>) -> actix_web::Result<ErrorHandle
 
 	res = res.map_body::<_, B>(|_, _| {
 		ResponseBody::Other(format!(
-			"<h2>Error HTTP {}</h2><p>{}</p>",
+			"<!DOCTYPE html><h3 style=\"font: 20px sans-serif; margin: 12px\">HTTP {}: {}</h3>",
 			status.as_u16(),
 			status.canonical_reason().unwrap_or("")
 		).into())
@@ -65,7 +66,6 @@ fn render_error<B>(mut res: ServiceResponse<B>) -> actix_web::Result<ErrorHandle
 
 	Ok(ErrorHandlerResponse::Response(res))
 }
-
 
 #[actix_web::main]
 async fn main() {
@@ -109,25 +109,23 @@ async fn main() {
 			/*.app_data(conf.to_owned())*/;
 	
 		for vhost in &conf.vhost {
-			let mut scope = web::scope("/")
-				.guard(guard::Host(
-					String::from(&vhost.host)
-				));
+			let mut scope = web::scope("/").guard(guard::Host(
+				String::from(&vhost.host)
+			));
 
 			for redir in vhost.redir.to_owned() {
-				scope = scope.service(
-					web::resource(&redir.mount)
-						.data(redir)
-						.to(|data: web::Data<Redir>| {
-							let status = match &data.permanent {
-								true => StatusCode::PERMANENT_REDIRECT,
-								false => StatusCode::TEMPORARY_REDIRECT,
-							};
-
-							HttpResponse::build(status)
-								.header(header::LOCATION, data.dest.as_str())
-								.finish()
-						})
+				let status = match redir.permanent {
+					true => StatusCode::PERMANENT_REDIRECT,
+					false => StatusCode::TEMPORARY_REDIRECT,
+				};
+				scope = scope.service(web::resource(redir.target)
+					.data(status)
+					.data(redir.dest)
+					.to(|status: web::Data<StatusCode>, dest: web::Data<String>| {
+						HttpResponse::build(*status.as_ref())
+							.header(header::LOCATION, dest.as_str())
+							.finish()
+					})
 				)
 			}
 
