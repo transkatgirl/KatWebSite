@@ -1,27 +1,29 @@
-use actix_web::{get, web, guard, body::{Body, ResponseBody}, dev::ServiceResponse, http::{header, header::{ContentType, IntoHeaderValue}, HeaderValue, Method, StatusCode}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash, ErrorHandlers, ErrorHandlerResponse}, App, HttpRequest, HttpResponse, HttpServer, Responder};
-use std::{process, fs, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}};
+use actix_web::{get, web, guard, body::{Body, ResponseBody}, dev::ServiceResponse, http::{header, header::{ContentType, IntoHeaderValue}, Method, StatusCode}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash, ErrorHandlers, ErrorHandlerResponse}, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use std::{process, fs, collections::HashMap, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}};
 use serde_derive::Deserialize;
 use log::{trace, warn, debug, error, log_enabled, info, Level, LevelFilter};
 
 #[derive(Deserialize,Clone,Debug)]
 struct Config {
-	files: Files,
+	vhost: Vec<Vhost>,
+	headers: HashMap<String, String>,
 	server: Server,
 }
 
 #[derive(Deserialize,Clone,Debug)]
-struct Files {
-	root_dir: PathBuf,
+struct Vhost {
+	host: String,
+	file_dir: PathBuf,
 }
 
 #[derive(Deserialize,Clone,Debug)]
 struct Server {
-	http_bind: Option<Vec<SocketAddr>>,
+	http_bind: Vec<SocketAddr>,
+	log_format: String,
 }
 
 // TODO:
 // - finish implementing web server
-//   - consider implementing file listing
 //   - implement configurable redirects
 //   - implement form handling
 //   - implement http auth
@@ -32,6 +34,8 @@ struct Server {
 
 fn render_error<B>(mut res: ServiceResponse<B>) -> actix_web::Result<ErrorHandlerResponse<B>> {
 	let status = res.status();
+
+	debug!("Generating HTTP {} error page", status.as_u16());
 
 	res.response_mut()
 		.headers_mut()
@@ -68,22 +72,6 @@ async fn main() {
 		process::exit(exitcode::CONFIG);
 	});
 
-	trace!("opening root directory");
-	let htmldir = config.files.root_dir.read_dir().unwrap_or_else(|err| {
-		error!("Unable to open root directory! {}", err);
-		process::exit(exitcode::IOERR);
-	});
-
-	trace!("iterating over root directory's contents");
-	let mut vhosts = Vec::new();
-	for subfolder in htmldir {
-		if let Ok(vhost) = subfolder {
-			vhosts.push(vhost.path())
-		}
-	}
-	trace!("detected vhosts: {:?}", vhosts);
-
-
 	info!("Loaded configuration.");
 
 
@@ -92,30 +80,30 @@ async fn main() {
 	let mut server = HttpServer::new(move || {
 		trace!("generating application builder");
 
-		let mut app = App::new() // TODO: Add actix_web::middleware::errhandlers::ErrorHandlers middleware
-			.wrap(Logger::new("%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D"))
+		let mut headers = DefaultHeaders::new();
+		for (key, val) in &conf.headers {
+			headers = headers.header(key, val);
+		}
+
+		let mut app = App::new()
+			.wrap(Logger::new(&conf.server.log_format))
 			.wrap(NormalizePath::new(TrailingSlash::MergeOnly))
 			.wrap(
 				ErrorHandlers::new()
 					.handler(StatusCode::NOT_FOUND, render_error)
 			)
+			.wrap(headers)
 			.wrap(Compress::default())
-			.data(conf.to_owned())
-			.default_service(
-				actix_files::Files::new("", conf.files.root_dir.join("default"))
-					.index_file("index.html")
-					.prefer_utf8(true)
-					.disable_content_disposition()
-			);
+			.data(conf.to_owned());
 	
-		for vhost in &vhosts {
+		for vhost in &conf.vhost {
 			app = app.service(
 				web::scope("/")
 					.guard(guard::Host(
-						String::from(vhost.file_name().unwrap().to_string_lossy())
+						String::from(&vhost.host)
 					))
 					.service(
-						actix_files::Files::new("", vhost)
+						actix_files::Files::new("", &vhost.file_dir)
 							.index_file("index.html")
 							.prefer_utf8(true)
 							.disable_content_disposition()
@@ -132,7 +120,7 @@ async fn main() {
 	});
 
 	trace!("adding port bindings");
-	for addr in config.server.http_bind.unwrap_or_else(|| vec![]) {
+	for addr in config.server.http_bind {
 		server = server.bind(addr).unwrap_or_else(|err| {
 			error!("Unable to bind to port! {}", err);
 			process::exit(exitcode::OSERR);

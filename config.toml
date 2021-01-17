@@ -1,5 +1,33 @@
-[files]
-root_dir="html"
+# A virtual host for serving files.
+[[vhost]]
+host = "localhost" # The Host header that this vhost serves. Must be an exact match.
+file_dir = "html/localhost" # Directory to serve files from.
+
+[[vhost]]
+host = "127.0.0.1"
+file_dir = "html/test"
+
+[headers]
+# HTTP headers added to all responses. This will not overwrite existing headers in a response.
+server = "KatWebSite"
 
 [server]
+# IP addresses to bind the HTTP server to.
 http_bind = ["[::1]:8080", "127.0.0.1:8080"]
+
+# The formatting string used for request logs.
+log_format = "%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D"
+# Format (taken from actix_web::middleware::Logger):
+# %%		The percent sign
+# %a		Peer IP address (or IP address of reverse proxy if used)
+# %t		Time when the request started processing (in RFC 3339 format)
+# %r		First line of request (Example: GET /test HTTP/1.1)
+# %s		Response status code
+# %b		Size of response in bytes, including HTTP headers
+# %T		Time taken to serve the request, in seconds to 6 decimal places
+# %D		Time taken to serve the request, in milliseconds
+# %U		Request URL
+# %{r}a		"Real IP" remote address (from HTTP headers)
+# %{FOO}i	request.headers["FOO"]
+# %{FOO}o	response.headers["FOO"]
+#%{FOO}e	env_var["FOO"]
