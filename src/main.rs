@@ -1,19 +1,33 @@
 use actix_web::{get, web, guard, body::{Body, ResponseBody}, dev::ServiceResponse, http::{header, header::{ContentType, IntoHeaderValue}, Method, StatusCode}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash, ErrorHandlers, ErrorHandlerResponse}, App, HttpRequest, HttpResponse, HttpServer, Responder};
-use std::{process, fs, collections::HashMap, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}};
+use std::{process, fs, collections::BTreeMap, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}};
 use serde_derive::Deserialize;
 use log::{trace, warn, debug, error, log_enabled, info, Level, LevelFilter};
 
 #[derive(Deserialize,Clone,Debug)]
 struct Config {
 	vhost: Vec<Vhost>,
-	headers: HashMap<String, String>,
+	headers: BTreeMap<String, String>,
 	server: Server,
 }
 
 #[derive(Deserialize,Clone,Debug)]
 struct Vhost {
 	host: String,
+	files: Vec<Files>,
+	redir: Vec<Redir>,
+}
+
+#[derive(Deserialize,Clone,Debug)]
+struct Files {
+	mount: String,
 	file_dir: PathBuf,
+}
+
+#[derive(Deserialize,Clone,Debug)]
+struct Redir {
+	mount: String,
+	dest: String,
+	permanent: bool,
 }
 
 #[derive(Deserialize,Clone,Debug)]
@@ -24,7 +38,7 @@ struct Server {
 
 // TODO:
 // - finish implementing web server
-//   - implement configurable redirects
+//   - cleanup HttpServer generation
 //   - implement form handling
 //   - implement http auth
 //   - implement https + hsts
@@ -72,9 +86,6 @@ async fn main() {
 		process::exit(exitcode::CONFIG);
 	});
 
-	info!("Loaded configuration.");
-
-
 	trace!("configuring HttpServer");
 	let conf = config.to_owned();
 	let mut server = HttpServer::new(move || {
@@ -90,25 +101,50 @@ async fn main() {
 			.wrap(NormalizePath::new(TrailingSlash::MergeOnly))
 			.wrap(
 				ErrorHandlers::new()
+					// TODO: Handle all possible error codes.
 					.handler(StatusCode::NOT_FOUND, render_error)
 			)
 			.wrap(headers)
 			.wrap(Compress::default())
-			.data(conf.to_owned());
+			/*.app_data(conf.to_owned())*/;
 	
 		for vhost in &conf.vhost {
-			app = app.service(
-				web::scope("/")
-					.guard(guard::Host(
-						String::from(&vhost.host)
-					))
-					.service(
-						actix_files::Files::new("", &vhost.file_dir)
-							.index_file("index.html")
-							.prefer_utf8(true)
-							.disable_content_disposition()
-					)
-			)
+			let mut scope = web::scope("/")
+				.guard(guard::Host(
+					String::from(&vhost.host)
+				));
+
+			for redir in vhost.redir.to_owned() {
+				scope = scope.service(
+					web::resource(&redir.mount)
+						.data(redir)
+						.to(|data: web::Data<Redir>| {
+							let status = match &data.permanent {
+								true => StatusCode::PERMANENT_REDIRECT,
+								false => StatusCode::TEMPORARY_REDIRECT,
+							};
+
+							HttpResponse::build(status)
+								.header(header::LOCATION, data.dest.as_str())
+								.finish()
+						})
+				)
+			}
+
+			for files in &vhost.files {
+				let mount = match files.mount.as_ref() {
+					"/" => "",
+					_ => &files.mount,
+				};
+				scope = scope.service(
+					actix_files::Files::new(mount, &files.file_dir)
+						.index_file("index.html")
+						.prefer_utf8(true)
+						.disable_content_disposition()
+				)
+			}
+
+			app = app.service(scope)
 		}
 
 		app/*.service(
@@ -126,6 +162,8 @@ async fn main() {
 			process::exit(exitcode::OSERR);
 		})
 	}
+
+	info!("Loaded configuration.");
 
 	trace!("starting HttpServer");
 	server.run().await.unwrap_or_else(|err| {

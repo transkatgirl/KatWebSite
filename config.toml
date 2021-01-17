@@ -1,14 +1,23 @@
-# A virtual host for serving files.
+# A virtual host. Virtual hosts and their handlers will be registered in the order they are specified in.
 [[vhost]]
 host = "localhost" # The Host header that this vhost serves. Must be an exact match.
-file_dir = "html/localhost" # Directory to serve files from.
 
-[[vhost]]
-host = "127.0.0.1"
+[[vhost.redir]]
+mount = "/redir"
+dest = "https://example.com"
+permanent = false # If the redirect should be permanent (ex: redirecting from an old domain to a new one), or temporary (ex: link shortening or a "coming soon" page).
+
+[[vhost.files]]
+mount = "/test2"
 file_dir = "html/test"
 
-[headers]
-# HTTP headers added to all responses. This will not overwrite existing headers in a response.
+[[vhost.files]] # A virtual host file handler.
+mount = "/" # The path this file hander serves (ex: /assets would serve files to example.com/assets/...).
+file_dir = "html/localhost" # Disk location files are loaded from.
+
+
+
+[headers] # HTTP headers added to *all* responses. This will not overwrite existing headers in a response.
 server = "KatWebSite"
 
 [server]
