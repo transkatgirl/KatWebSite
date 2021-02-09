@@ -47,24 +47,16 @@ struct Server {
 // - implement page generation
 //   - katsite code may be useful as a reference
 
-fn render_error<B>(mut res: ServiceResponse<B>) -> actix_web::Result<ErrorHandlerResponse<B>> {
-	let status = res.status();
+fn handle_not_found() -> HttpResponse {
+	HttpResponse::NotFound()
+		.content_type("text/html; charset=utf-8")
+		.body("<!DOCTYPE html><h3 style=\"font: 20px sans-serif; margin: 12px\">The requested resource could not be found.</h3>")
+}
 
-	debug!("Generating HTTP {} error page", status.as_u16());
-
-	res.response_mut()
-		.headers_mut()
-		.insert(header::CONTENT_TYPE, ContentType::html().try_into().unwrap());
-
-	res = res.map_body::<_, B>(|_, _| {
-		ResponseBody::Other(format!(
-			"<!DOCTYPE html><h3 style=\"font: 20px sans-serif; margin: 12px\">HTTP {}: {}</h3>",
-			status.as_u16(),
-			status.canonical_reason().unwrap_or("")
-		).into())
-	});
-
-	Ok(ErrorHandlerResponse::Response(res))
+fn handle_redirect(status: web::Data<StatusCode>, dest: web::Data<String>) -> HttpResponse {
+	HttpResponse::build(*status.as_ref())
+		.header(header::LOCATION, dest.as_str())
+		.finish()
 }
 
 #[actix_web::main]
@@ -98,15 +90,9 @@ async fn main() {
 
 		let mut app = App::new()
 			.wrap(Logger::new(&conf.server.log_format))
-			.wrap(NormalizePath::new(TrailingSlash::MergeOnly))
-			.wrap(
-				ErrorHandlers::new()
-					// TODO: Handle all possible error codes.
-					.handler(StatusCode::NOT_FOUND, render_error)
-			)
 			.wrap(headers)
 			.wrap(Compress::default())
-			/*.app_data(conf.to_owned())*/;
+			.default_service(web::route().to(handle_not_found));
 	
 		for vhost in &conf.vhost {
 			let mut scope = web::scope("/").guard(guard::Host(
@@ -119,13 +105,8 @@ async fn main() {
 					false => StatusCode::TEMPORARY_REDIRECT,
 				};
 				scope = scope.service(web::resource(redir.target)
-					.data(status)
-					.data(redir.dest)
-					.to(|status: web::Data<StatusCode>, dest: web::Data<String>| {
-						HttpResponse::build(*status.as_ref())
-							.header(header::LOCATION, dest.as_str())
-							.finish()
-					})
+					.data(status).data(redir.dest)
+					.to(handle_redirect)
 				)
 			}
 

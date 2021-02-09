@@ -9,14 +9,19 @@ categories = ["network-programming", "web-programming::http-server", "web-progra
 edition = '2018'
 
 [dependencies]
-actix-web = "4.0.0-beta.1"
-actix-files = "0.6.0-beta.1"
+actix-web = ">=4.0.0-beta.1"
+actix-files = ">=0.6.0-beta.1"
+
+# Hacky workaround to https://github.com/actix/actix-web/issues/1944
+actix-rt = "=2.0.0-beta.2"
+actix-service = "=2.0.0-beta.3"
+
 env_logger = "0.8.2"
 exitcode = "1.1.2"
-log = { version = "0.4.13", features = ["release_max_level_info"] }
+log = { version = "0.4.14", features = ["release_max_level_info"] }
 toml = "0.5.8"
-serde = "1.0.119"
-serde_derive = "1.0.119"
+serde = "1.0.123"
+serde_derive = "1.0.123"
 
 [profile.dev]
 rpath = true
