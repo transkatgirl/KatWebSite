@@ -15,14 +15,20 @@ file_dir = "html/test"
 mount = "/" # The path this file hander serves (ex: /assets would serve files to example.com/assets/...).
 file_dir = "html/localhost" # Disk location files are loaded from.
 
+[vhost.tls] # A virtual host TLS listener.
+cert_file = "/home/kat/Downloads/localhost.pem"
+key_file = "/home/kat/Downloads/localhost-key.pem"
 
 
 [headers] # HTTP headers added to *all* responses. This will not overwrite existing headers in a response.
 server = "KatWebSite"
 
 [server]
-# IP addresses to bind the HTTP server to.
+# IP addresses to bind the HTTP listener to.
 http_bind = ["[::1]:8080", "127.0.0.1:8080"]
+
+# IP addresses to bind the HTTPS listener to.
+tls_bind = ["[::1]:8181", "127.0.0.1:8181"]
 
 # The formatting string used for request logs.
 log_format = "%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D"
