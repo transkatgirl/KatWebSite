@@ -1,10 +1,10 @@
 #![warn(clippy::all)]
 
-use actix_web::{get, web, guard, body::{Body, ResponseBody}, dev::ServiceResponse, http::{header, header::{ContentType, IntoHeaderValue}, Method, StatusCode}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash, ErrorHandlers, ErrorHandlerResponse}, App, HttpRequest, HttpResponse, HttpServer, Responder};
-use std::{process, fs, fs::File, collections::BTreeMap, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}, io::BufReader, sync::Arc};
+use actix_web::{get, web, guard, body::{Body, ResponseBody}, dev::ServiceResponse, http::{header, header::{ContentType, IntoHeaderValue}, Method, StatusCode, Uri, uri::Scheme}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash, ErrorHandlers, ErrorHandlerResponse}, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use std::{process, iter, fs, fs::File, collections::BTreeMap, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}, io::BufReader, sync::Arc, error::Error, boxed::Box};
 use serde_derive::Deserialize;
-use log::{trace, warn, debug, error, log_enabled, info, Level, LevelFilter};
-use rustls::{NoClientAuth, ServerConfig, ResolvesServerCertUsingSNI, sign, sign::CertifiedKey, internal::pemfile};
+use log::{trace, warn, debug, error, info, LevelFilter};
+use rustls::{NoClientAuth, ServerConfig, ResolvesServerCertUsingSNI, sign, sign::CertifiedKey, PrivateKey, Certificate};
 
 #[derive(Deserialize,Clone,Debug)]
 struct Config {
@@ -36,9 +36,7 @@ struct Redir {
 
 #[derive(Deserialize,Clone,Debug)]
 struct Tls {
-	cert_file: PathBuf,
-	key_file: PathBuf,
-	//hsts: bool,
+	pemfiles: Vec<PathBuf>,
 }
 
 #[derive(Deserialize,Clone,Debug)]
@@ -52,7 +50,7 @@ struct Server {
 // - finish implementing web server
 //   - implement form handling
 //   - implement http auth
-//   - implement hsts
+//   - implement http -> https redirects
 //   - clean up code
 //   - implement http reverse proxy
 // - implement page generation
@@ -68,6 +66,37 @@ fn handle_redirect(status: web::Data<StatusCode>, dest: web::Data<String>) -> Ht
 	HttpResponse::build(*status.as_ref())
 		.header(header::LOCATION, dest.as_str())
 		.finish()
+}
+
+// FIXME
+/*fn handle_redirect_to_https(req: HttpRequest) -> HttpResponse {
+	let mut parts = req.uri().to_owned().into_parts();
+	parts.scheme = Some(Scheme::HTTPS);
+	let uri = Uri::from_parts(parts).unwrap();
+
+	HttpResponse::TemporaryRedirect()
+		.header(header::LOCATION, uri.to_string())
+		.finish()
+}*/
+
+fn create_certified_key(pemfiles: &Vec<PathBuf>) -> Result<CertifiedKey, Box<dyn Error>> {
+	let mut certs = Vec::new();
+	let mut keys = Vec::new();
+	for pemfile in pemfiles {
+		let mut reader = BufReader::new(File::open(pemfile)?);
+		for item in iter::from_fn(|| rustls_pemfile::read_one(&mut reader).transpose()) {
+			match item? {
+				rustls_pemfile::Item::X509Certificate(cert) => certs.push(Certificate(cert)),
+				rustls_pemfile::Item::PKCS8Key(key) => keys.push(PrivateKey(key)),
+				rustls_pemfile::Item::RSAKey(key) => keys.push(PrivateKey(key)),
+			}
+		}
+	}
+
+	let key = keys.get(0).ok_or("no valid keys found")?;
+	let signingkey = sign::any_supported_type(key).or(Err("unable to parse key"))?;
+
+	return Ok(CertifiedKey::new(certs, Arc::new(signingkey)))
 }
 
 #[actix_web::main]
@@ -89,46 +118,21 @@ async fn main() {
 		process::exit(exitcode::CONFIG);
 	});
 
-	trace!("configuring rustls");
-	let mut tlsconf = ServerConfig::new(NoClientAuth::new());
+	trace!("loading tls certificates");
 	let mut resolver = ResolvesServerCertUsingSNI::new();
 	for vhost in &config.vhost {
 		if let Some(tls) = &vhost.tls {
-			let cert_file = &mut BufReader::new(File::open(&tls.cert_file).unwrap_or_else(|err| {
-				error!("Unable to open TLS cert for {}! {}", vhost.host, err);
-				process::exit(exitcode::NOINPUT);
-			}));
-			let key_file = &mut BufReader::new(File::open(&tls.key_file).unwrap_or_else(|err| {
-				error!("Unable to open TLS private key for {}! {}", vhost.host, err);
-				process::exit(exitcode::NOINPUT);
-			}));
-
-			let certs = pemfile::certs(cert_file).unwrap_or_else(|_| {
-				error!("Unable to load TLS cert for {}!", vhost.host);
+			let keypair = create_certified_key(&tls.pemfiles).unwrap_or_else(|err| {
+				error!("Unable to load certificate pair for {}! {}", vhost.host, err);
 				process::exit(exitcode::DATAERR);
 			});
-			let keys = pemfile::pkcs8_private_keys(key_file).unwrap_or_else(|_| {
-				error!("Unable to load TLS private key for {}!", vhost.host);
-				process::exit(exitcode::DATAERR);
-			});
-			if keys.len() > 1 {
-				debug!("more than one TLS key provided for {}", vhost.host)
-			}
-			let key = keys.get(0).unwrap_or_else(|| {
-				error!("No TLS private keys found for {}!", vhost.host);
-				process::exit(exitcode::DATAERR);
-			});
-			let signingkey = sign::any_supported_type(key).unwrap_or_else(|_| {
-				error!("Unable to parse TLS private key for {}!", vhost.host);
-				process::exit(exitcode::DATAERR);
-			});
-
-			resolver.add(&vhost.host, CertifiedKey::new(certs, Arc::new(signingkey))).unwrap_or_else(|err| {
-				error!("Unable to configure TLS cert for {}! {}", vhost.host, err);
+			resolver.add(&vhost.host, keypair).unwrap_or_else(|err| {
+				error!("Unable to configure certificate pair for {}! {}", vhost.host, err);
 				process::exit(exitcode::DATAERR);
 			});
 		}
 	}
+	let mut tlsconf = ServerConfig::new(NoClientAuth::new());
 	tlsconf.cert_resolver = Arc::new(resolver);
 
 	trace!("configuring HttpServer");
@@ -146,7 +150,7 @@ async fn main() {
 			.wrap(headers)
 			.wrap(Compress::default())
 			.default_service(web::route().to(handle_not_found));
-	
+
 		for vhost in &conf.vhost {
 			let mut scope = web::scope("/").guard(guard::Host(
 				String::from(&vhost.host)
@@ -176,7 +180,7 @@ async fn main() {
 				)
 			}
 
-			app = app.service(scope)
+			app = app.service(scope);
 		}
 
 		app/*.service(

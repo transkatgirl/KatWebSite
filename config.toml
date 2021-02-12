@@ -16,12 +16,14 @@ mount = "/" # The path this file hander serves (ex: /assets would serve files to
 file_dir = "html/localhost" # Disk location files are loaded from.
 
 [vhost.tls] # A virtual host TLS listener.
-cert_file = "/home/kat/Downloads/localhost.pem"
-key_file = "/home/kat/Downloads/localhost-key.pem"
-
+pemfiles = [
+	"/home/kat/Downloads/localhost.pem", # The TLS certificate file used by the listener.
+	"/home/kat/Downloads/localhost-key.pem" # The TLS key used by the listener.
+]
 
 [headers] # HTTP headers added to *all* responses. This will not overwrite existing headers in a response.
 server = "KatWebSite"
+# strict-transport-security = "max-age=63072000;includeSubDomains;preload" # Setup HSTS preloading (please read https://hstspreload.org before uncommenting!)
 
 [server]
 # IP addresses to bind the HTTP listener to.
