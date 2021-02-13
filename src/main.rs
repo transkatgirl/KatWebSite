@@ -109,7 +109,7 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 	let mut scope = web::scope("/")
 		.guard(guard::Host(String::from(&vhost.host)));
 
-	for redir in vhost.redir.to_owned().unwrap_or_else(|| Vec::new()) {
+	for redir in vhost.redir.to_owned().unwrap_or_default() {
 		let status = match redir.permanent {
 			true => StatusCode::PERMANENT_REDIRECT,
 			false => StatusCode::TEMPORARY_REDIRECT,
@@ -125,7 +125,7 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 		)
 	}
 
-	for files in vhost.files.to_owned().unwrap_or_else(|| Vec::new()) {
+	for files in vhost.files.to_owned().unwrap_or_default() {
 		let mount = match files.mount.as_ref() {
 			"/" => "",
 			_ => &files.mount,

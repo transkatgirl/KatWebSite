@@ -21,7 +21,7 @@ file_dir = "html/test"
 mount = "/" # The path this file hander serves (ex: /assets would serve files to example.com/assets/...).
 file_dir = "html/localhost" # Disk location files are loaded from.
 
-[vhost.tls] # A virtual host TLS configuration.
+[vhost.tls] # TLS configuration for the virtual host.
 pemfiles = [
 	"/home/kat/Downloads/localhost.pem", # The TLS certificate file used by the listener.
 	"/home/kat/Downloads/localhost-key.pem" # The TLS key used by the listener.
