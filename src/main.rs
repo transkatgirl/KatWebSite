@@ -13,6 +13,7 @@ struct Config {
 	server: Server,
 }
 
+
 #[derive(Deserialize,Clone,Debug)]
 struct Vhost {
 	host: String,
@@ -38,6 +39,7 @@ struct Redir {
 struct Tls {
 	pemfiles: Vec<PathBuf>,
 }
+
 
 #[derive(Deserialize,Clone,Debug)]
 struct Server {
@@ -79,7 +81,7 @@ fn handle_redirect(status: web::Data<StatusCode>, dest: web::Data<String>) -> Ht
 		.finish()
 }*/
 
-fn create_certified_key(pemfiles: &Vec<PathBuf>) -> Result<CertifiedKey, Box<dyn Error>> {
+fn create_certified_key(pemfiles: &[PathBuf]) -> Result<CertifiedKey, Box<dyn Error>> {
 	let mut certs = Vec::new();
 	let mut keys = Vec::new();
 	for pemfile in pemfiles {
@@ -96,7 +98,7 @@ fn create_certified_key(pemfiles: &Vec<PathBuf>) -> Result<CertifiedKey, Box<dyn
 	let key = keys.get(0).ok_or("no valid keys found")?;
 	let signingkey = sign::any_supported_type(key).or(Err("unable to parse key"))?;
 
-	return Ok(CertifiedKey::new(certs, Arc::new(signingkey)))
+	Ok(CertifiedKey::new(certs, Arc::new(signingkey)))
 }
 
 #[actix_web::main]
@@ -137,7 +139,7 @@ async fn main() {
 
 	trace!("configuring HttpServer");
 	let conf = config.to_owned();
-	let mut server = HttpServer::new(move || {
+	let appbuilder = move || {
 		trace!("generating application builder");
 
 		let mut headers = DefaultHeaders::new();
@@ -189,7 +191,9 @@ async fn main() {
 				.service(handle_post)
 
 		)*/
-	});
+	};
+
+	let mut server = HttpServer::new(appbuilder);
 
 	trace!("adding port bindings");
 	for addr in config.server.http_bind {
