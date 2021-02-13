@@ -1,11 +1,17 @@
 # A virtual host. Virtual hosts and their handlers will be registered in the order they are specified in.
 [[vhost]]
 host = "localhost" # The Host header that this vhost serves. Must be an exact match.
+protocols = ["https"] # The protocols this vhost handles. Supported protocols are "http" and "https".
 
 [[vhost.redir]]
-target = "/redir*" # The location this redirect targets (ex: /redir would target example.com/redir). Supports wildcards.
+target = "/redir/*" # The location this redirect targets (ex: /redir would target example.com/redir). Supports wildcards and path deserialization.
 dest = "https://example.com" # The URL this redirects to.
 permanent = false # If the redirect should be permanent (ex: redirecting from an old domain to a new one), or temporary (ex: link shortening or a "coming soon" page).
+
+[[vhost.redir]]
+target = "/redirect/{path:.*}" # Use path deserialization to append the end of the path to the target.
+dest = "https://example.com" # All deserialized items are appended to the path as items (ex: test,test2 -> [dest]/test/test2)
+permanent = false
 
 [[vhost.files]]
 mount = "/test2"
@@ -15,11 +21,29 @@ file_dir = "html/test"
 mount = "/" # The path this file hander serves (ex: /assets would serve files to example.com/assets/...).
 file_dir = "html/localhost" # Disk location files are loaded from.
 
-[vhost.tls] # A virtual host TLS listener.
+[vhost.tls] # A virtual host TLS configuration.
 pemfiles = [
 	"/home/kat/Downloads/localhost.pem", # The TLS certificate file used by the listener.
 	"/home/kat/Downloads/localhost-key.pem" # The TLS key used by the listener.
 ]
+
+
+# Example #1: using vhosts for http -> https redirects
+[[vhost]]
+host = "localhost"
+protocols = ["http"]
+
+[[vhost.redir]]
+target = "/" # Paths without a target (ex: http://example.com) are a special case and must be handled separately.
+dest = "https://localhost:8181"
+permanent = false
+
+[[vhost.redir]]
+target = "/{path:.*}"
+dest = "https://localhost:8181"
+permanent = false
+
+
 
 [headers] # HTTP headers added to *all* responses. This will not overwrite existing headers in a response.
 server = "KatWebSite"
