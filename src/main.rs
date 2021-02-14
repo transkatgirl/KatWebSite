@@ -53,7 +53,6 @@ struct Server {
 // - finish implementing web server
 //   - implement form handling
 //   - implement http auth
-//   - implement per-vhost headers
 //   - clean up code
 //   - implement http reverse proxy
 // - implement page generation
@@ -231,8 +230,8 @@ async fn main() {
 	trace!("starting HttpServer");
 	servertls.run();
 	server.run().await.unwrap_or_else(|err| {
-			error!("Unable to start server! {}", err);
-			process::exit(exitcode::OSERR);
+		error!("Unable to start server! {}", err);
+		process::exit(exitcode::OSERR);
 	});
 	trace!("HttpServer execution has stopped");
 }
