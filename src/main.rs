@@ -71,7 +71,7 @@ fn handle_redirect(req: HttpRequest, status: web::Data<StatusCode>, dest: web::D
 	}
 
 	HttpResponse::build(*status.as_ref())
-		.header(header::LOCATION, dest)
+		.append_header((header::LOCATION, dest))
 		.finish()
 }
 
