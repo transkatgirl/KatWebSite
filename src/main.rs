@@ -124,6 +124,9 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 		)
 	}
 
+	// Potentially useful future features:
+	// - https://github.com/actix/actix-web/issues/1718
+	// - https://github.com/actix/actix-web/issues/2000
 	for files in vhost.files.to_owned().unwrap_or_default() {
 		let mount = match files.mount.as_ref() {
 			"/" => "",
