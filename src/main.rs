@@ -1,12 +1,13 @@
 #![warn(clippy::all)]
 
-use actix_web::{get, web, guard, body::{Body, ResponseBody}, dev::ServiceResponse, http::{header, header::{ContentType, IntoHeaderValue}, Method, StatusCode, Uri, uri::Scheme}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash, ErrorHandlers, ErrorHandlerResponse}, App, Scope, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{web, guard, http::{header, StatusCode}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash}, App, Scope, HttpRequest, HttpResponse, HttpServer};
 use std::{process, iter, fs, fs::File, collections::BTreeMap, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}, io::BufReader, sync::Arc, error::Error, boxed::Box};
 use serde_derive::Deserialize;
 use log::{trace, warn, debug, error, info, LevelFilter};
 use rustls::{NoClientAuth, ServerConfig, ResolvesServerCertUsingSNI, sign, sign::CertifiedKey, PrivateKey, Certificate};
 
 #[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
 struct Config {
 	vhost: Vec<Vhost>,
 	headers: BTreeMap<String, String>,
@@ -15,6 +16,7 @@ struct Config {
 
 
 #[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
 struct Vhost {
 	host: String,
 	protocols: Vec<String>,
@@ -24,12 +26,14 @@ struct Vhost {
 }
 
 #[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
 struct Files {
 	mount: String,
 	file_dir: PathBuf,
 }
 
 #[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
 struct Redir {
 	target: String,
 	dest: String,
@@ -37,12 +41,14 @@ struct Redir {
 }
 
 #[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
 struct Tls {
 	pemfiles: Vec<PathBuf>,
 }
 
 
 #[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
 struct Server {
 	http_bind: Vec<SocketAddr>,
 	tls_bind: Vec<SocketAddr>,
@@ -50,11 +56,6 @@ struct Server {
 }
 
 // TODO:
-// - finish implementing web server
-//   - implement form handling
-//   - implement http auth
-//   - clean up code
-//   - implement http reverse proxy
 // - implement page generation
 //   - katsite code may be useful as a reference
 
@@ -190,6 +191,7 @@ async fn main() {
 		let mut app = App::new()
 			.wrap(Logger::new(&conf.server.log_format))
 			.wrap(headers)
+			.wrap(NormalizePath::new(TrailingSlash::Trim))
 			.wrap(Compress::default())
 			.default_service(web::route().to(handle_not_found));
 
@@ -221,7 +223,7 @@ async fn main() {
 			process::exit(exitcode::OSERR);
 		})
 	}
-	for addr in config.server.tls_bind {
+	for addr in &config.server.tls_bind {
 		servertls = servertls.bind_rustls(addr, tlsconf.to_owned()).unwrap_or_else(|err| {
 			error!("Unable to bind to port! {}", err);
 			process::exit(exitcode::OSERR);
@@ -231,7 +233,11 @@ async fn main() {
 	info!("Loaded configuration.");
 
 	trace!("starting HttpServer");
-	servertls.run();
+	if !config.server.tls_bind.is_empty() {
+		servertls.run();
+	} else {
+		debug!("tls server has no port bindings, skipping");
+	}
 	server.run().await.unwrap_or_else(|err| {
 		error!("Unable to start server! {}", err);
 		process::exit(exitcode::OSERR);
