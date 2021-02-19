@@ -1,0 +1,79 @@
+# A virtual host. Virtual hosts and their handlers will be registered in the order they are specified in.
+[[vhost]]
+host = "localhost" # The Host header that this vhost serves. Must be an exact match.
+protocols = ["https"] # The protocols this vhost handles. Supported protocols are "http" and "https".
+
+[[vhost.redir]]
+target = "/redir/*" # The location this redirect targets (ex: /redir would target example.com/redir). Supports wildcards and path deserialization.
+dest = "https://example.com" # The URL this redirects to.
+permanent = false # If the redirect should be permanent (ex: redirecting from an old domain to a new one), or temporary (ex: link shortening or a "coming soon" page).
+
+[[vhost.redir]]
+target = "/redirect/{path:.*}" # Use path deserialization to append the end of the path to the target.
+dest = "https://example.com" # All deserialized items are appended to the path as items (ex: test,test2 -> [dest]/test/test2)
+permanent = false
+
+[[vhost.files]]
+mount = "/test2"
+file_dir = "html/test"
+
+[[vhost.files]] # A virtual host file handler.
+mount = "/" # The path this file hander serves (ex: /assets would serve files to example.com/assets/...).
+file_dir = "html/localhost" # Disk location files are loaded from.
+
+[vhost.tls] # TLS configuration for the virtual host.
+pemfiles = [
+	"/home/kat/Downloads/localhost.pem", # The TLS certificate file used by the listener.
+	"/home/kat/Downloads/localhost-key.pem" # The TLS key used by the listener.
+]
+
+
+# Example #1: using vhosts for http -> https redirects
+[[vhost]]
+host = "localhost"
+protocols = ["http"]
+
+[[vhost.redir]]
+target = "/" # Paths without a target (ex: http://example.com) are a special case and must be handled separately.
+dest = "https://localhost:8181"
+permanent = false
+
+[[vhost.redir]]
+target = "/{path:.*}"
+dest = "https://localhost:8181"
+permanent = false
+
+
+
+[headers] # HTTP headers added to *all* responses. This will not overwrite existing headers in a response.
+server = "KatWebSite"
+
+# strict-transport-security = "max-age=63072000;includeSubDomains;preload" # Setup HSTS preloading (please read https://hstspreload.org before uncommenting!)
+
+content-security-policy = "default-src 'none'; connect-src 'self'; font-src 'self'; img-src 'self'; media-src 'self'; script-src 'self'; style-src 'self'; base-uri 'none'; plugin-types 'none'; sandbox allow-scripts; frame-ancestors 'none'; block-all-mixed-content; require-trusted-types-for 'script'; upgrade-insecure-requests" # A fairly decent default Content-Security Policy. A reference for CSP values can be found at https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy, and https://csp-evaluator.withgoogle.com can be useful for validating your CSP header.
+referrer-policy = "no-referrer" # Disable the HTTP referrer header to improve security.
+x-content-type-options = "nosniff" # Prevent browsers from sniffing the MIME types of resources.
+
+[server]
+# IP addresses to bind the HTTP listener to.
+http_bind = ["[::1]:8080", "127.0.0.1:8080"]
+
+# IP addresses to bind the HTTPS listener to.
+tls_bind = ["[::1]:8181", "127.0.0.1:8181"]
+
+# The formatting string used for request logs.
+log_format = "%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D"
+# Format (taken from actix_web::middleware::Logger):
+# %%		The percent sign
+# %a		Peer IP address (or IP address of reverse proxy if used)
+# %t		Time when the request started processing (in RFC 3339 format)
+# %r		First line of request (Example: GET /test HTTP/1.1)
+# %s		Response status code
+# %b		Size of response in bytes, including HTTP headers
+# %T		Time taken to serve the request, in seconds to 6 decimal places
+# %D		Time taken to serve the request, in milliseconds
+# %U		Request URL
+# %{r}a		"Real IP" remote address (from HTTP headers)
+# %{FOO}i	request.headers["FOO"]
+# %{FOO}o	response.headers["FOO"]
+#%{FOO}e	env_var["FOO"]

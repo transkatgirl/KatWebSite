@@ -9,13 +9,14 @@ categories = ["network-programming", "web-programming::http-server", "web-progra
 edition = '2018'
 
 [dependencies]
+clap = { version = ">=3.0.0-beta.2", features = ["wrap_help", "yaml"] }
 actix-web = { version = ">=4.0.0-beta.1", features = ["rustls"] }
 actix-files = ">=0.6.0-beta.1"
 
 # Stable deps which rarely require updates.
-env_logger = "0.8.3"
 exitcode = "1.1.2"
-log = { version = "0.4.14", features = ["release_max_level_info"] }
+flexi_logger = "0.17.1"
+log = "0.4.14"
 toml = "0.5.8"
 serde = "1.0.123"
 serde_derive = "1.0.123"
