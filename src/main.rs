@@ -156,9 +156,7 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 	// https://github.com/rust-lang/rust/issues/53667
 	if let Some(Tls{ http_dest: Some(dest), ..}) = &vhost.tls {
 		if !is_tls {
-			return Some(
-				scope.data(dest.to_owned()).default_service(web::to(handle_https_redirect))
-			)
+			return Some(scope.data(dest.to_owned()).default_service(web::to(handle_https_redirect)))
 		}
 	}
 
@@ -217,12 +215,11 @@ async fn main() {
 
 	info!("Loading configuration");
 
-	trace!("reading {}", opts.config);
+	debug!("parsing {} as toml configuration", opts.config);
 	let config_data = fs::read_to_string(&opts.config).unwrap_or_else(|err| {
 		error!("Unable to read config file! {}", err);
 		process::exit(exitcode::NOINPUT);
 	});
-	debug!("parsing {} as toml configuration", opts.config);
 	let config: Config = toml::from_str(&config_data).unwrap_or_else(|err| {
 		error!("Unable to parse config file! {}", err);
 		process::exit(exitcode::CONFIG);
@@ -248,7 +245,7 @@ async fn main() {
 		let mut app = App::new()
 			.wrap(Logger::new(&serverconf.log_format))
 			.wrap(headers)
-			.wrap(NormalizePath::new(TrailingSlash::Trim))
+			.wrap(NormalizePath::new(TrailingSlash::MergeOnly))
 			.wrap(Compress::default())
 			.default_service(web::route().to(handle_not_found));
 
