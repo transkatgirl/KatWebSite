@@ -1,7 +1,6 @@
 # A virtual host. Virtual hosts and their handlers will be registered in the order they are specified in.
 [[vhost]]
 host = "localhost" # The Host header that this vhost serves. Must be an exact match.
-protocols = ["https"] # The protocols this vhost handles. Supported protocols are "http" and "https".
 
 [[vhost.redir]]
 target = "/redir/*" # The location this redirect targets (ex: /redir would target example.com/redir). Supports wildcards and path deserialization.
@@ -21,27 +20,27 @@ file_dir = "html/test"
 mount = "/" # The path this file hander serves (ex: /assets would serve files to example.com/assets/...).
 file_dir = "html/localhost" # Disk location files are loaded from.
 
-[vhost.tls] # TLS configuration for the virtual host.
+[vhost.tls] # TLS configuration for the virtual host. If this is not specified, the virtual host will only be reachable over HTTP.
 pemfiles = [
 	"/home/kat/Downloads/localhost.pem", # The TLS certificate file used by the listener.
 	"/home/kat/Downloads/localhost-key.pem" # The TLS key used by the listener.
 ]
+http_dest = "https://localhost:8181" # If this is specified, all HTTP requests going to this vhost are redirected to the specified HTTPS destination. If this isn't specified, HTTP requests are handled the same way as HTTPS requests.
 
 
-# Example #1: using vhosts for http -> https redirects
+# Example #1: using vhosts for domain -> newdomain redirects
 [[vhost]]
-host = "localhost"
-protocols = ["http"]
+host = "127.0.0.1"
 
 [[vhost.redir]]
 target = "/" # Paths without a target (ex: http://example.com) are a special case and must be handled separately.
 dest = "https://localhost:8181"
-permanent = false
+permanent = true
 
 [[vhost.redir]]
 target = "/{path:.*}"
 dest = "https://localhost:8181"
-permanent = false
+permanent = true
 
 
 

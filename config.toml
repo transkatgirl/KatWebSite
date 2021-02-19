@@ -4,5 +4,11 @@ host = "localhost"
 [[vhost.files]]
 file_dir = "html/localhost"
 
+[[vhost]]
+host = "127.0.0.1"
+
+[[vhost.redir]]
+dest = "http://localhost:8080"
+
 [server]
 http_bind = ["[::1]:8080", "127.0.0.1:8080"]

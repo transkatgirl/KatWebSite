@@ -33,7 +33,7 @@ struct Config {
 	#[serde(default)]
 	headers: BTreeMap<String, String>,
 
-	server: Server,
+	server: Option<Server>,
 }
 
 
@@ -42,9 +42,6 @@ struct Config {
 struct Vhost {
 	host: String,
 
-	#[serde(default = "default_vhost_protocols")]
-	protocols: Vec<String>,
-
 	#[serde(default)]
 	files: Vec<Files>,
 
@@ -52,10 +49,6 @@ struct Vhost {
 	redir: Vec<Redir>,
 
 	tls: Option<Tls>,
-}
-
-fn default_vhost_protocols() -> Vec<String> {
-	vec!["http".to_string()]
 }
 
 #[derive(Deserialize,Clone,Debug)]
@@ -83,6 +76,7 @@ struct Redir {
 #[serde(deny_unknown_fields)]
 struct Tls {
 	pemfiles: Vec<PathBuf>,
+	http_dest: Option<String>,
 }
 
 
@@ -106,6 +100,7 @@ fn default_server_log_format() -> String {
 // TODO:
 // - implement page generation
 //   - katsite code may be useful as a reference
+// - separate code into multiple files
 
 fn handle_not_found() -> HttpResponse {
 	HttpResponse::NotFound()
@@ -121,6 +116,12 @@ fn handle_redirect(req: HttpRequest, status: web::Data<StatusCode>, dest: web::D
 
 	HttpResponse::build(*status.as_ref())
 		.append_header((header::LOCATION, dest))
+		.finish()
+}
+
+fn handle_https_redirect(req: HttpRequest, dest: web::Data<String>) -> HttpResponse {
+	HttpResponse::PermanentRedirect()
+		.append_header((header::LOCATION, [dest.as_str(), req.path()].concat()))
 		.finish()
 }
 
@@ -145,17 +146,21 @@ fn create_certified_key(pemfiles: &[PathBuf]) -> Result<CertifiedKey, Box<dyn Er
 }
 
 fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
-	let is_active = match is_tls {
-		true => vhost.protocols.contains(&"https".to_string()),
-		false => vhost.protocols.contains(&"http".to_string()),
-	};
-
-	if !is_active {
+	if is_tls && vhost.tls.is_none() {
 		return None
 	}
 
 	let mut scope = web::scope("/")
 		.guard(guard::Host(String::from(&vhost.host)));
+
+	// https://github.com/rust-lang/rust/issues/53667
+	if let Some(Tls{ http_dest: Some(dest), ..}) = &vhost.tls {
+		if !is_tls {
+			return Some(
+				scope.data(dest.to_owned()).default_service(web::to(handle_https_redirect))
+			)
+		}
+	}
 
 	for redir in vhost.redir.to_owned() {
 		let status = match redir.permanent {
@@ -223,8 +228,17 @@ async fn main() {
 		process::exit(exitcode::CONFIG);
 	});
 
+	let serverconfig = match config.server {
+		Some(ref server) => server,
+		None => {
+			trace!("no http server specified, exiting early");
+			return
+		},
+	};
+
 	debug!("initializing HttpServer");
 	let conf = config.to_owned();
+	let serverconf = serverconfig.to_owned();
 	let appbuilder = move |is_tls| {
 		let mut headers = DefaultHeaders::new();
 		for (key, val) in &conf.headers {
@@ -232,7 +246,7 @@ async fn main() {
 		}
 
 		let mut app = App::new()
-			.wrap(Logger::new(&conf.server.log_format))
+			.wrap(Logger::new(&serverconf.log_format))
 			.wrap(headers)
 			.wrap(NormalizePath::new(TrailingSlash::Trim))
 			.wrap(Compress::default())
@@ -259,7 +273,7 @@ async fn main() {
 		appbuilderr(true)
 	});
 
-	for addr in config.server.http_bind {
+	for addr in &serverconfig.http_bind {
 		server = server.bind(addr).unwrap_or_else(|err| {
 			error!("Unable to bind to port! {}", err);
 			process::exit(exitcode::OSERR);
@@ -267,7 +281,7 @@ async fn main() {
 	}
 	let futureserver = server.run();
 
-	if !config.server.tls_bind.is_empty() {
+	if !serverconfig.tls_bind.is_empty() {
 		debug!("loading tls certificates");
 		let mut resolver = ResolvesServerCertUsingSNI::new();
 		for vhost in &config.vhost {
@@ -286,7 +300,7 @@ async fn main() {
 		let mut tlsconf = ServerConfig::new(NoClientAuth::new());
 		tlsconf.cert_resolver = Arc::new(resolver);
 
-		for addr in &config.server.tls_bind {
+		for addr in &serverconfig.tls_bind {
 			servertls = servertls.bind_rustls(addr, tlsconf.to_owned()).unwrap_or_else(|err| {
 				error!("Unable to bind to port! {}", err);
 				process::exit(exitcode::OSERR);
