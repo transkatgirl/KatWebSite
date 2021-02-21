@@ -50,7 +50,7 @@ async fn main() {
 	let logstr = match opts.verbose - opts.quiet {
 		i32::MIN...-2 => "error",
 		-1 => "warn, actix_web::middleware::logger = info",
-		0 => "info, actix_server::accept = warn",
+		0 => "info, actix_server::accept = warn, actix_server::builder = warn",
 		1 => "debug, actix_server::accept = warn",
 		2 => "trace, actix_web::middleware::logger = debug, rustls = debug, actix_server::accept = warn",
 		3...i32::MAX => "trace",
