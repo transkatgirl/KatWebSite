@@ -76,6 +76,14 @@ async fn main() {
 		process::exit(exitcode::CONFIG);
 	});
 
+	match config.builder.is_empty() {
+		true => {
+			debug!("no page builder specified, skipping")
+		},
+		false => (
+			info!("Generating site pages")
+		),
+	}
 	for builder in &config.builder {
 		builder::run_builder(builder).unwrap_or_else(|err| {
 			error!("Unable to run builder for {:?}! {}", builder.input_glob, err);
