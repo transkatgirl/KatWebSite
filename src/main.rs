@@ -114,7 +114,18 @@ fn default_server_log_format() -> String {
 
 // TODO:
 // - implement page generation
-//   - katsite code may be useful as a reference
+//   - implement custom html generator
+//   - implement page layouts
+//   - implement frontmatter parsing
+//     - allow specifying layout in frontmatter
+//     - allow setting default variable values in config
+//   - implement liquid templating
+//     - allow accessing frontmatter variables through liquid
+//     - implement subset of jekyll liquid
+//   - implement html sanitizer
+//   - possible feature: implement file minifiers (html, css, js)
+//   - possible feature: implement media optimization
+//   * katsite code may be useful as a reference
 // - separate code into multiple files
 
 fn handle_not_found() -> HttpResponse {
