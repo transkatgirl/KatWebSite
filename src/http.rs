@@ -5,7 +5,7 @@ use futures::future::Either;
 use log::{trace, debug, info};
 use rustls::{NoClientAuth, ServerConfig, ResolvesServerCertUsingSNI, sign, sign::CertifiedKey, PrivateKey, Certificate};
 use serde_derive::Deserialize;
-use std::{iter, fs::File, collections::BTreeMap, net::SocketAddr, path::PathBuf, io::BufReader, sync::Arc, error::Error, boxed::Box, future, future::Future};
+use std::{iter, fs::File, default::Default, collections::BTreeMap, net::SocketAddr, path::PathBuf, io::BufReader, sync::Arc, error::Error, boxed::Box, future, future::Future};
 
 #[derive(Deserialize,Clone,Debug)]
 #[serde(deny_unknown_fields)]
@@ -49,6 +49,7 @@ pub struct Tls {
 	pub http_dest: Option<String>,
 }
 
+pub type Headers = BTreeMap<String, String>;
 
 #[derive(Deserialize,Clone,Debug)]
 #[serde(deny_unknown_fields)]
@@ -61,6 +62,14 @@ pub struct Server {
 
 	#[serde(default = "default_server_log_format")]
 	pub log_format: String,
+}
+
+impl Default for Server {
+	fn default() -> Self { Server {
+		http_bind: vec![],
+		tls_bind: vec![],
+		log_format: default_server_log_format()
+	}}
 }
 
 fn default_server_log_format() -> String {
@@ -154,7 +163,7 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 	Some(scope)
 }
 
-pub fn run_http_server(is_tls: bool, server: &Server, headers: &BTreeMap<String, String>, vhosts: &[Vhost]) -> Result<impl Future<Output = Result<(), std::io::Error>>, Box<dyn Error>> {
+pub fn run_http_server(is_tls: bool, server: &Server, headers: &Headers, vhosts: &[Vhost]) -> Result<impl Future<Output = Result<(), std::io::Error>>, Box<dyn Error>> {
 	let log_format = server.log_format.to_owned();
 	let vhosts_copy = vhosts.to_owned();
 	let headers_copy = headers.to_owned();
@@ -189,7 +198,7 @@ pub fn run_http_server(is_tls: bool, server: &Server, headers: &BTreeMap<String,
 	match is_tls {
 		true => {
 			if server.tls_bind.is_empty() {
-				trace!("tls_bind is empty, skipping https init");
+				debug!("tls_bind is empty, skipping https init");
 				return Ok(Either::Left(future::ready(Ok(()))));
 			}
 			info!("Starting HTTPS Server");
@@ -212,7 +221,7 @@ pub fn run_http_server(is_tls: bool, server: &Server, headers: &BTreeMap<String,
 		},
 		false => {
 			if server.http_bind.is_empty() {
-				trace!("http_bind is empty, skipping http init");
+				debug!("http_bind is empty, skipping http init");
 				return Ok(Either::Left(future::ready(Ok(()))));
 			}
 			info!("Starting HTTP Server");
