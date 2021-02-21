@@ -2,7 +2,10 @@
 
 use actix_web::{web, guard, http::{header, StatusCode}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash}, App, Scope, HttpRequest, HttpResponse, HttpServer};
 use clap::Clap;
+use comrak::ComrakOptions;
+use glob::MatchOptions;
 use log::{trace, warn, debug, error, info};
+use rayon::prelude::*;
 use rustls::{NoClientAuth, ServerConfig, ResolvesServerCertUsingSNI, sign, sign::CertifiedKey, PrivateKey, Certificate};
 use serde_derive::Deserialize;
 use std::{process, iter, fs, fs::File, collections::BTreeMap, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}, io::BufReader, sync::Arc, error::Error, boxed::Box};
@@ -28,12 +31,24 @@ struct Opts {
 #[derive(Deserialize,Clone,Debug)]
 #[serde(deny_unknown_fields)]
 struct Config {
+	#[serde(default)]
+	builder: Vec<Builder>,
+
+	#[serde(default)]
 	vhost: Vec<Vhost>,
 
 	#[serde(default)]
 	headers: BTreeMap<String, String>,
 
 	server: Option<Server>,
+}
+
+
+#[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
+struct Builder {
+	input_glob: String,
+	output: PathBuf,
 }
 
 
@@ -195,6 +210,38 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 	Some(scope)
 }
 
+fn build_page(builder: &Builder, paths: Vec<PathBuf>, input_path: &Path) {
+	trace!("parsing {:?}", &input_path);
+	let input = fs::read_to_string(&input_path).unwrap_or_else(|err| {
+		error!("Unable to read {:?}! {}", &input_path, err);
+		process::exit(exitcode::IOERR);
+	});
+
+	let mut options = ComrakOptions::default();
+	options.extension.strikethrough = true;
+	options.extension.table = true;
+	options.extension.autolink = true;
+	options.extension.tasklist = true;
+	options.extension.superscript = true;
+	options.extension.header_ids = Some("user-content-".to_string());
+	options.extension.footnotes = true;
+	options.extension.description_lists = true;
+	options.extension.front_matter_delimiter = Some("---".to_owned());
+	options.parse.smart = true;
+	options.render.unsafe_ = true;
+
+	let html = comrak::markdown_to_html(&input, &options);
+
+	let mut output_path = builder.output.to_owned();
+	output_path.push(input_path.file_stem().unwrap());
+	output_path.set_extension("html");
+
+	fs::write(&output_path, html).unwrap_or_else(|err| {
+		error!("Unable to write to {:?}! {}", &output_path, err);
+		process::exit(exitcode::IOERR);
+	});
+}
+
 #[actix_web::main]
 async fn main() {
 	let opts: Opts = Opts::parse();
@@ -209,7 +256,10 @@ async fn main() {
 	};
 
 	flexi_logger::Logger::with_env_or_str(logstr)
-		.start().unwrap();
+		.start().unwrap_or_else(|err| {
+			eprintln!("Unable to start logger! {}", err);
+			process::exit(exitcode::UNAVAILABLE);
+	});
 
 	trace!("started logger with default RUST_LOG set to {:?}", logstr);
 
@@ -225,6 +275,36 @@ async fn main() {
 		process::exit(exitcode::CONFIG);
 	});
 
+	match config.builder.is_empty() {
+		true => {
+			trace!("no page builder specified, skipping")
+		},
+		false => (
+			info!("Generating site pages")
+		),
+	}
+	for builder in &config.builder {
+		debug!("starting builder for {:?}", builder.input_glob);
+		let paths = glob::glob_with(&builder.input_glob, MatchOptions{
+			case_sensitive: false,
+			require_literal_separator: false,
+			require_literal_leading_dot: true
+		}).unwrap_or_else(|err| {
+			error!("Unable to parse file glob! {}", err);
+			process::exit(exitcode::CONFIG);
+		}).filter_map(Result::ok).collect::<Vec<_>>();
+
+		fs::create_dir_all(&builder.output).unwrap_or_else(|err| {
+			error!("Unable to create {:?}! {}", &builder.output, err);
+			process::exit(exitcode::IOERR);
+		});
+
+		trace!("{:?} matches {:?}", builder.input_glob, paths);
+		paths.iter().par_bridge().for_each(|fpath| {
+			build_page(builder, paths.to_owned(), fpath);
+		});
+	}
+
 	let serverconfig = match config.server {
 		Some(ref server) => server,
 		None => {
@@ -233,7 +313,7 @@ async fn main() {
 		},
 	};
 
-	debug!("initializing HttpServer");
+	info!("Starting HTTP Server");
 	let conf = config.to_owned();
 	let serverconf = serverconfig.to_owned();
 	let appbuilder = move |is_tls| {

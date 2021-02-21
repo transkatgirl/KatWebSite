@@ -2,7 +2,11 @@
 host = "localhost"
 
 [[vhost.files]]
-file_dir = "html/localhost"
+file_dir = "/tmp/localhost_test"
+
+[[builder]]
+input_glob = "html/localhost_test/*.md"
+output = "/tmp/localhost_test"
 
 [server]
 http_bind = ["[::1]:8080", "127.0.0.1:8080"]
