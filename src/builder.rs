@@ -12,7 +12,6 @@ use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::B
 // TODO:
 // - finish implementing Site
 //   - allow symlinking/copying from builder dir to output folder
-//   - implement data parsing
 // - implement more of jeykll liquid
 //   - implement file includes
 // - implement layouts
@@ -35,7 +34,7 @@ order of interpretation:
 struct Site {
 	pages: Vec<Page>,
 	//files: Vec<PathBuf>,
-	//data: Vec<Object>,
+	data: Vec<Object>,
 }
 
 #[derive(Serialize,Clone,Debug)]
@@ -98,6 +97,8 @@ pub struct Dirs {
 }
 
 fn read_data(input: PathBuf) -> Object {
+	trace!("loading {:?}", &input);
+
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
 		error!("Unable to read {:?}! {}", &input, err);
 		process::exit(exitcode::IOERR);
@@ -199,14 +200,14 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 		require_literal_leading_dot: true
 	};
 
-	/*let mut data = Object::new();
+	let mut data = vec![];
 	for databuilder in &builder.data {
 		let dataobj = glob::glob_with(&databuilder.input, globconfig)?
 			.par_bridge().filter_map(Result::ok)
-			.map(|datafile| read_data(datafile)).collect::<Vec<_>>().flatten();
+			.map(|datafile| read_data(datafile)).collect::<Vec<_>>();
 
 		data.extend(dataobj);
-	}*/
+	}
 
 	for pagebuilder in &builder.pages {
 		let glob = [root.as_str(), pagebuilder.input.as_str()].concat();
@@ -217,6 +218,7 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 
 		let mut site = Site {
 			pages: pages.to_owned(),
+			data: data.to_owned(),
 		};
 
 		let pages = pages.iter().par_bridge()

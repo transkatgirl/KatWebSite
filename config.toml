@@ -12,7 +12,7 @@ output = "/tmp/localhost_test"
 input = "_sass/*.scss"
 output = "main.css"
 
-[[builder.data]] # unimplemented
+[[builder.data]]
 input = "_data/*.toml"
 
 [[builder.pages]]
