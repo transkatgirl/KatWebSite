@@ -1,80 +1,204 @@
 #![warn(clippy::all)]
 
 use comrak::ComrakOptions;
+use extract_frontmatter::Extractor;
 use glob::MatchOptions;
+use liquid::{ParserBuilder, Object};
 use log::{trace, warn, debug, error, info};
 use rayon::prelude::*;
-use serde_derive::Deserialize;
-use std::{process, iter, fs, fs::File, collections::BTreeMap, net::SocketAddr, ffi::OsStr, path::{Path, PathBuf}, io::BufReader, sync::Arc, error::Error, boxed::Box};
+use serde_derive::{Serialize, Deserialize};
+use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::Box, ffi::OsStr};
 
 // TODO:
-// - implement page generation
-//   - implement custom html generator
-//   - implement page layouts
-//   - implement frontmatter parsing
-//     - allow specifying layout in frontmatter
-//     - allow setting default variable values in config
-//   - implement liquid templating
-//     - allow accessing frontmatter variables through liquid
-//     - implement subset of jekyll liquid
-//   - implement html sanitizer
-//   - possible feature: implement file minifiers (html, css, js)
-//   - possible feature: implement media optimization
+// - finish implementing Site
+//   - allow symlinking/copying from builder dir to output folder
+//   - implement data parsing
+// - implement more of jeykll liquid
+// - implement layouts
+//   - allow specifying layouts in frontmatter
+// - implement html sanitizer
+// - implement sass css
+// - possible feature: implement file minifiers (html, css, js)
+// - possible feature: implement media optimization
 //   * katsite code may be useful as a reference
+
+/*
+order of interpretation:
+- frontmatter/data file parsing
+- liquid parsing
+- markdown parsing
+- layout parsing
+*/
+
+#[derive(Serialize,Clone,Debug)]
+struct Site {
+	pages: Vec<Page>,
+	//files: Vec<PathBuf>,
+	//data: Vec<Object>,
+}
+
+#[derive(Serialize,Clone,Debug)]
+struct Page {
+	path: PathBuf,
+	data: Option<Object>,
+	content: String,
+}
 
 #[derive(Deserialize,Clone,Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Builder {
-	pub input_glob: String,
+	pub root: String,
+	pub output: PathBuf,
+
+	#[serde(default)]
+	pub data: Vec<Data>,
+
+	#[serde(default)]
+	pub sass: Vec<Sass>,
+	
+	#[serde(default)]
+	pub pages: Vec<PageBuilder>,
+
+}
+
+#[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Sass {
+	pub input: String,
 	pub output: PathBuf,
 }
 
-fn build_page(input_path: &Path, paths: Vec<PathBuf>, builder: &Builder) {
-	trace!("parsing {:?}", &input_path);
-	let input = fs::read_to_string(&input_path).unwrap_or_else(|err| {
-		error!("Unable to read {:?}! {}", &input_path, err);
+
+#[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Data {
+	#[serde(default)]
+	pub input: String,
+}
+
+#[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
+pub struct PageBuilder {
+	pub input: String,
+	pub sanitize: bool,
+	pub layout: Option<PathBuf>,
+
+	#[serde(default)]
+	pub default_vars: Object,
+}
+
+fn create_page(input: PathBuf, output: PathBuf) -> Page {
+	trace!("parsing frontmatter for {:?}", &input);
+
+	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
+		error!("Unable to read {:?}! {}", &input, err);
 		process::exit(exitcode::IOERR);
 	});
 
-	let mut options = ComrakOptions::default();
-	options.extension.strikethrough = true;
-	options.extension.table = true;
-	options.extension.autolink = true;
-	options.extension.tasklist = true;
-	options.extension.superscript = true;
-	options.extension.header_ids = Some("user-content-".to_string());
-	options.extension.footnotes = true;
-	options.extension.description_lists = true;
-	options.extension.front_matter_delimiter = Some("---".to_owned());
-	options.parse.smart = true;
-	options.render.unsafe_ = true;
+	let mut extractor = Extractor::new(&input_str);
+	extractor.select_by_terminator("---");
+	extractor.discard_first_line();
 
-	let html = comrak::markdown_to_html(&input, &options);
+	let mut page = Page {
+		path: output.join(&input.file_name().unwrap_or_default()),
+		data: None,
+		content: extractor.remove().to_owned(),
+	};
 
-	let mut output_path = builder.output.to_owned();
-	output_path.push(input_path.file_stem().unwrap());
-	output_path.set_extension("html");
+	if page.content == "" {
+		debug!("{:?} does not contain frontmatter", &input);
+		page.content = input_str;
+		return page
+	}
 
-	fs::write(&output_path, html).unwrap_or_else(|err| {
-		error!("Unable to write to {:?}! {}", &output_path, err);
-		process::exit(exitcode::IOERR);
+	let data: Object = toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
+		error!("Unable to parse {:?}'s frontmatter! {}", &input, err);
+		process::exit(exitcode::DATAERR);
 	});
+
+	page.data = Some(data);
+	page
+}
+
+fn build_site_page(mut page: Page, site: Site) -> Page {
+	trace!("building {:?}", &page.path);
+
+	let template = ParserBuilder::with_stdlib()
+		.build().unwrap_or_else(|err| {
+			error!("Unable to create liquid parser! {}", err);
+			process::exit(exitcode::SOFTWARE);
+		})
+		.parse(&page.content).unwrap_or_else(|err| {
+			error!("Unable to parse {:?}! {}", &page.path, err);
+			process::exit(exitcode::DATAERR);
+		});
+
+	let liquified = template.render(&liquid::object!({
+		"site": site,
+		"page": page,
+	})).unwrap_or_else(|err| {
+		error!("Unable to render {:?}! {}", &page.path, err);
+		process::exit(exitcode::DATAERR);
+	});
+
+	if page.path.as_path().extension() == Some(OsStr::new("md")) {
+		trace!("generating {:?}", &page.path);
+
+		let mut options = ComrakOptions::default();
+		options.extension.strikethrough = true;
+		options.extension.table = true;
+		options.extension.autolink = true;
+		options.extension.tasklist = true;
+		options.extension.superscript = true;
+		options.extension.header_ids = Some("user-content-".to_string());
+		options.extension.footnotes = true;
+		options.extension.description_lists = true;
+		options.parse.smart = true;
+		options.render.unsafe_ = true;
+
+		page.content = comrak::markdown_to_html(&liquified, &options);
+		page.path.set_extension("html");
+	} else {
+		page.content = liquified;
+	}
+
+	page
 }
 
 pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
-	debug!("starting builder for {:?}", builder.input_glob);
-	let paths = glob::glob_with(&builder.input_glob, MatchOptions{
-		case_sensitive: false,
-		require_literal_separator: false,
-		require_literal_leading_dot: true
-	})?.filter_map(Result::ok).collect::<Vec<_>>();
+	let root = [builder.root.to_owned(), path::MAIN_SEPARATOR.to_string()].concat();
+	debug!("starting builder for {:?}", root);
 
 	fs::create_dir_all(&builder.output)?;
 
-	trace!("{:?} matches {:?}", builder.input_glob, paths);
-	paths.iter().par_bridge().for_each(|fpath| {
-		build_page(fpath, paths.to_owned(), builder);
-	});
+	for pagebuilder in &builder.pages {
+		let glob = [root.as_str(), pagebuilder.input.as_str()].concat();
+		let pages = glob::glob_with(&glob, MatchOptions{
+			case_sensitive: false,
+			require_literal_separator: false,
+			require_literal_leading_dot: true
+		})?
+			.par_bridge().filter_map(Result::ok)
+			.map(|fpath| create_page(fpath, builder.output.to_owned()))
+			.collect::<Vec<_>>();
+
+		let mut site = Site {
+			pages: pages.to_owned(),
+		};
+
+		let pages = pages.iter().par_bridge()
+			.map(|page| build_site_page(page.to_owned(), site.to_owned()))
+			.collect::<Vec<_>>();
+
+		site.pages = pages.to_owned();
+
+		pages.iter().par_bridge().for_each(|page| {
+			fs::write(&page.path, &page.content).unwrap_or_else(|err| {
+				error!("Unable to write to {:?}! {}", &page.path, err);
+				process::exit(exitcode::IOERR);
+			});
+		});
+	}
 
 	Ok(())
 }

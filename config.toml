@@ -5,8 +5,23 @@ host = "localhost"
 file_dir = "/tmp/localhost_test"
 
 [[builder]]
-input_glob = "html/localhost_test/*.md"
+root = "html/localhost_test"
 output = "/tmp/localhost_test"
+
+[[builder.sass]] # unimplemented
+input = "_sass/*.scss"
+output = "main.css"
+
+[[builder.data]] # unimplemented
+input = "_data/*.toml"
+
+[[builder.pages]]
+input = "_posts/*"
+sanitize = true # unimplemented
+layout = "_layout.html" # unimplemented
+
+[builder.pages.default_vars]
+title = "Hello World!"
 
 [server]
 http_bind = ["[::1]:8080", "127.0.0.1:8080"]
