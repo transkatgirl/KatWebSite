@@ -14,6 +14,7 @@ use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::B
 //   - allow symlinking/copying from builder dir to output folder
 //   - implement data parsing
 // - implement more of jeykll liquid
+//   - implement file includes
 // - implement layouts
 //   - allow specifying layouts in frontmatter
 // - implement html sanitizer
@@ -72,7 +73,6 @@ pub struct Sass {
 #[derive(Deserialize,Clone,Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Data {
-	#[serde(default)]
 	pub input: String,
 }
 
@@ -81,10 +81,32 @@ pub struct Data {
 pub struct PageBuilder {
 	pub input: String,
 	pub sanitize: bool,
-	pub layout: Option<PathBuf>,
+	pub default_dirs: Option<Dirs>,
 
 	#[serde(default)]
 	pub default_vars: Object,
+}
+
+#[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Dirs {
+	#[serde(default)]
+	pub layout_dir: PathBuf,
+
+	#[serde(default)]
+	pub include_dir: PathBuf,
+}
+
+fn read_data(input: PathBuf) -> Object {
+	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
+		error!("Unable to read {:?}! {}", &input, err);
+		process::exit(exitcode::IOERR);
+	});
+
+	toml::from_str(&input_str).unwrap_or_else(|err| {
+		error!("Unable to parse {:?}! {}", &input, err);
+		process::exit(exitcode::DATAERR);
+	})
 }
 
 fn create_page(input: PathBuf, output: PathBuf) -> Page {
@@ -171,13 +193,24 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 
 	fs::create_dir_all(&builder.output)?;
 
+	let globconfig = MatchOptions{
+		case_sensitive: false,
+		require_literal_separator: false,
+		require_literal_leading_dot: true
+	};
+
+	/*let mut data = Object::new();
+	for databuilder in &builder.data {
+		let dataobj = glob::glob_with(&databuilder.input, globconfig)?
+			.par_bridge().filter_map(Result::ok)
+			.map(|datafile| read_data(datafile)).collect::<Vec<_>>().flatten();
+
+		data.extend(dataobj);
+	}*/
+
 	for pagebuilder in &builder.pages {
 		let glob = [root.as_str(), pagebuilder.input.as_str()].concat();
-		let pages = glob::glob_with(&glob, MatchOptions{
-			case_sensitive: false,
-			require_literal_separator: false,
-			require_literal_leading_dot: true
-		})?
+		let pages = glob::glob_with(&glob, globconfig)?
 			.par_bridge().filter_map(Result::ok)
 			.map(|fpath| create_page(fpath, builder.output.to_owned()))
 			.collect::<Vec<_>>();

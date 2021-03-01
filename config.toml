@@ -16,9 +16,12 @@ output = "main.css"
 input = "_data/*.toml"
 
 [[builder.pages]]
-input = "_posts/*"
+input = "_pages/*"
 sanitize = true # unimplemented
-layout = "_layout.html" # unimplemented
+
+[builder.pages.default_dirs] # unimplemented
+layout_dir = "_layouts"
+include_dir = "_includes"
 
 [builder.pages.default_vars]
 title = "Hello World!"
