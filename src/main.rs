@@ -86,7 +86,7 @@ async fn main() {
 	}
 	for builder in &config.builder {
 		builder::run_builder(builder).unwrap_or_else(|err| {
-			error!("Unable to run builder for {:?}! {}", builder.root, err);
+			error!("Unable to run builder for {:?}! {}", builder.mount, err);
 			process::exit(exitcode::DATAERR);
 		})
 	}

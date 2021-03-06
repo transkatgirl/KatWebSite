@@ -5,25 +5,16 @@ host = "localhost"
 file_dir = "/tmp/localhost_test"
 
 [[builder]]
-root = "html/localhost_test"
+mount = "html/localhost_test" # Only files in the root of the mount are parsed, subdirectories are ignored.
 output = "/tmp/localhost_test"
 
-[[builder.sass]] # unimplemented
-input = "_sass/*.scss"
-output = "main.css"
-
-[[builder.data]]
-input = "_data/*.toml"
-
-[[builder.pages]]
-input = "_pages/*"
 sanitize = true # unimplemented
 
-[builder.pages.default_dirs] # unimplemented
+[builder.default_dirs] # unimplemented
 layout_dir = "_layouts"
 include_dir = "_includes"
 
-[builder.pages.default_vars]
+[builder.default_vars] # unimplemented
 title = "Hello World!"
 
 [server]

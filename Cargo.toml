@@ -37,8 +37,10 @@ log = "0.4.14"
 futures = "0.3.12"
 
 ### Parallel file loading [builder.rs]
-glob = "0.3.0"
 rayon = "1.5.0"
+
+### SASS compilation [builder.rs]
+grass = "0.10.4"
 
 ### Liquid templating
 liquid = "0.22.0"

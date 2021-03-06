@@ -2,7 +2,7 @@
 
 use comrak::ComrakOptions;
 use extract_frontmatter::Extractor;
-use glob::MatchOptions;
+use grass::{Options, OutputStyle};
 use liquid::{ParserBuilder, Object};
 use log::{trace, warn, debug, error, info};
 use rayon::prelude::*;
@@ -17,7 +17,6 @@ use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::B
 // - implement layouts
 //   - allow specifying layouts in frontmatter
 // - implement html sanitizer
-// - implement sass css
 // - possible feature: implement file minifiers (html, css, js)
 // - possible feature: implement media optimization
 //   * katsite code may be useful as a reference
@@ -40,50 +39,23 @@ struct Site {
 #[derive(Serialize,Clone,Debug)]
 struct Page {
 	path: PathBuf,
-	data: Option<Object>,
+	data: Object,
 	content: String,
 }
 
 #[derive(Deserialize,Clone,Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Builder {
-	pub root: String,
+	pub mount: PathBuf,
 	pub output: PathBuf,
 
-	#[serde(default)]
-	pub data: Vec<Data>,
-
-	#[serde(default)]
-	pub sass: Vec<Sass>,
-	
-	#[serde(default)]
-	pub pages: Vec<PageBuilder>,
-
-}
-
-#[derive(Deserialize,Clone,Debug)]
-#[serde(deny_unknown_fields)]
-pub struct Sass {
-	pub input: String,
-	pub output: PathBuf,
-}
-
-
-#[derive(Deserialize,Clone,Debug)]
-#[serde(deny_unknown_fields)]
-pub struct Data {
-	pub input: String,
-}
-
-#[derive(Deserialize,Clone,Debug)]
-#[serde(deny_unknown_fields)]
-pub struct PageBuilder {
-	pub input: String,
 	pub sanitize: bool,
+
 	pub default_dirs: Option<Dirs>,
 
 	#[serde(default)]
 	pub default_vars: Object,
+
 }
 
 #[derive(Deserialize,Clone,Debug)]
@@ -110,7 +82,7 @@ fn read_data(input: PathBuf) -> Object {
 	})
 }
 
-fn create_page(input: PathBuf, output: PathBuf) -> Page {
+fn create_page(input: PathBuf, output: PathBuf) -> Option<Page> {
 	trace!("parsing frontmatter for {:?}", &input);
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
@@ -122,16 +94,10 @@ fn create_page(input: PathBuf, output: PathBuf) -> Page {
 	extractor.select_by_terminator("---");
 	extractor.discard_first_line();
 
-	let mut page = Page {
-		path: output.join(&input.file_name().unwrap_or_default()),
-		data: None,
-		content: extractor.remove().to_owned(),
-	};
-
-	if page.content == "" {
+	let content = extractor.remove().to_owned();
+	if content == "" {
 		debug!("{:?} does not contain frontmatter", &input);
-		page.content = input_str;
-		return page
+		return None
 	}
 
 	let data: Object = toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
@@ -139,8 +105,34 @@ fn create_page(input: PathBuf, output: PathBuf) -> Page {
 		process::exit(exitcode::DATAERR);
 	});
 
-	page.data = Some(data);
-	page
+	Some ( Page {
+		path: output.join(&input.file_name().unwrap_or_default()),
+		data: data,
+		content: content,
+	})
+}
+
+fn render_markdown(input: &str) -> String {
+	let mut options = ComrakOptions::default();
+	options.extension.strikethrough = true;
+	options.extension.table = true;
+	options.extension.autolink = true;
+	options.extension.tasklist = true;
+	options.extension.superscript = true;
+	options.extension.header_ids = Some("user-content-".to_string());
+	options.extension.footnotes = true;
+	options.extension.description_lists = true;
+	options.parse.smart = true;
+	options.render.unsafe_ = true;
+
+	comrak::markdown_to_html(input, &options)
+}
+
+fn render_sass(input: String) -> Result<String, Box<grass::Error>> {
+	let options = Options::default()
+		.style(OutputStyle::Compressed);
+
+	grass::from_string(input, &options)
 }
 
 fn build_site_page(mut page: Page, site: Site) -> Page {
@@ -164,76 +156,75 @@ fn build_site_page(mut page: Page, site: Site) -> Page {
 		process::exit(exitcode::DATAERR);
 	});
 
-	if page.path.as_path().extension() == Some(OsStr::new("md")) {
-		trace!("generating {:?}", &page.path);
+	match page.path.as_path().extension() {
+		Some(ext) => { match ext.to_str() { // There's no way to make a static OsStr (yet).
+			Some("md") => {
+				trace!("generating {:?}", &page.path);
+				page.content = render_markdown(&liquified);
+				page.path.set_extension("html");
+			},
+			Some("sass") => {
+				trace!("generating {:?}", &page.path);
+				page.content = render_sass(liquified).unwrap_or_else(|err| {
+					error!("Unable to compile {:?}! {}", &page.path, err);
+					process::exit(exitcode::DATAERR);
+				});
+				page.path.set_extension("css");
 
-		let mut options = ComrakOptions::default();
-		options.extension.strikethrough = true;
-		options.extension.table = true;
-		options.extension.autolink = true;
-		options.extension.tasklist = true;
-		options.extension.superscript = true;
-		options.extension.header_ids = Some("user-content-".to_string());
-		options.extension.footnotes = true;
-		options.extension.description_lists = true;
-		options.parse.smart = true;
-		options.render.unsafe_ = true;
-
-		page.content = comrak::markdown_to_html(&liquified, &options);
-		page.path.set_extension("html");
-	} else {
-		page.content = liquified;
+			},
+			_ => page.content = liquified,
+		}},
+		_ => page.content = liquified,
 	}
 
 	page
 }
 
 pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
-	let root = [builder.root.to_owned(), path::MAIN_SEPARATOR.to_string()].concat();
-	debug!("starting builder for {:?}", root);
+	debug!("starting builder for {:?}", &builder.mount);
 
 	fs::create_dir_all(&builder.output)?;
 
-	let globconfig = MatchOptions{
-		case_sensitive: false,
-		require_literal_separator: false,
-		require_literal_leading_dot: true
+	let input = fs::read_dir(&builder.mount).unwrap_or_else(|err| {
+		error!("Unable to open {:?}! {}", &builder.mount, err);
+		process::exit(exitcode::IOERR);
+	})
+		.filter_map(Result::ok)
+		.filter(|e| {
+			e.file_type().map(|t| t.is_file()).unwrap_or(false)
+		})
+		.map(|e| e.path())
+		.collect::<Vec<_>>();
+
+	let data = input.iter()
+		.filter(|p| p.extension() == Some(OsStr::new("toml")))
+		.par_bridge()
+		.map(|path| read_data(path.to_owned()))
+		.collect::<Vec<_>>();
+
+	let pages = input.iter()
+		.filter(|p| p.extension() != Some(OsStr::new("toml")))
+		.par_bridge()
+		.filter_map(|path| create_page(path.to_owned(), builder.output.to_owned()))
+		.collect::<Vec<_>>();
+
+	let mut site = Site {
+		pages: pages.to_owned(),
+		data: data.to_owned(),
 	};
 
-	let mut data = vec![];
-	for databuilder in &builder.data {
-		let dataobj = glob::glob_with(&databuilder.input, globconfig)?
-			.par_bridge().filter_map(Result::ok)
-			.map(|datafile| read_data(datafile)).collect::<Vec<_>>();
+	let pages = pages.iter().par_bridge()
+		.map(|page| build_site_page(page.to_owned(), site.to_owned()))
+		.collect::<Vec<_>>();
 
-		data.extend(dataobj);
-	}
+	site.pages = pages.to_owned();
 
-	for pagebuilder in &builder.pages {
-		let glob = [root.as_str(), pagebuilder.input.as_str()].concat();
-		let pages = glob::glob_with(&glob, globconfig)?
-			.par_bridge().filter_map(Result::ok)
-			.map(|fpath| create_page(fpath, builder.output.to_owned()))
-			.collect::<Vec<_>>();
-
-		let mut site = Site {
-			pages: pages.to_owned(),
-			data: data.to_owned(),
-		};
-
-		let pages = pages.iter().par_bridge()
-			.map(|page| build_site_page(page.to_owned(), site.to_owned()))
-			.collect::<Vec<_>>();
-
-		site.pages = pages.to_owned();
-
-		pages.iter().par_bridge().for_each(|page| {
-			fs::write(&page.path, &page.content).unwrap_or_else(|err| {
-				error!("Unable to write to {:?}! {}", &page.path, err);
-				process::exit(exitcode::IOERR);
-			});
+	pages.iter().par_bridge().for_each(|page| {
+		fs::write(&page.path, &page.content).unwrap_or_else(|err| {
+			error!("Unable to write to {:?}! {}", &page.path, err);
+			process::exit(exitcode::IOERR);
 		});
-	}
+	});
 
 	Ok(())
 }
