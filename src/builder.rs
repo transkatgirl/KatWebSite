@@ -14,9 +14,9 @@ use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::B
 //   - implement file includes
 // - implement layouts
 //   - allow specifying layouts in frontmatter
-// - implement html sanitizer
 // - possible feature: implement file minifiers (html, css, js)
 // - possible feature: implement media optimization
+// - code cleanup
 //   * katsite code may be useful as a reference
 
 /*
@@ -89,6 +89,9 @@ pub struct Renderers {
 
 	#[serde(default)]
 	pub markdown: bool,
+
+	#[serde(default)]
+	pub sanitizer: bool,
 }
 
 impl Default for Renderers {
@@ -97,6 +100,7 @@ impl Default for Renderers {
 		liquid: true,
 		sass: true,
 		markdown: true,
+		sanitizer: false,
 	}}
 }
 
@@ -156,18 +160,21 @@ fn create_page(input: PathBuf, output: PathBuf, defaults: &Object, renderers: &R
 	Some(page)
 }
 
-fn render_markdown(input: &str) -> String {
+fn render_markdown(input: &str, renderers: &Renderers) -> String {
 	let mut options = ComrakOptions::default();
 	options.extension.strikethrough = true;
 	options.extension.table = true;
 	options.extension.autolink = true;
 	options.extension.tasklist = true;
 	options.extension.superscript = true;
-	options.extension.header_ids = Some("user-content-".to_string());
-	options.extension.footnotes = true;
+	if !renderers.sanitizer {
+		options.extension.header_ids = Some("user-content-".to_string());
+		options.extension.footnotes = true;
+	}
 	options.extension.description_lists = true;
 	options.extension.front_matter_delimiter = Some("---".to_string());
 	options.parse.smart = true;
+	options.render.github_pre_lang = true;
 	options.render.unsafe_ = true;
 
 	comrak::markdown_to_html(input, &options)
@@ -208,7 +215,7 @@ fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Option<
 	match page.path.as_path().extension().unwrap_or_default().to_str() {
 		Some("md") if renderers.markdown => {
 			trace!("generating {:?}", &page.path);
-			page.content = render_markdown(&liquified);
+			page.content = render_markdown(&liquified, renderers);
 			page.path.set_extension("html");
 		},
 		Some("sass") if renderers.sass => {
@@ -226,6 +233,18 @@ fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Option<
 	}
 
 	Some(page)
+}
+
+fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
+	match page.path.as_path().extension().unwrap_or_default().to_str() {
+		Some("html") if renderers.sanitizer => {
+			trace!("sanitizing {:?}", &page.path);
+			page.content = ammonia::clean(&page.content);
+		},
+		_ => (),
+	}
+
+	page
 }
 
 pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
@@ -268,25 +287,27 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 		.collect::<Vec<_>>();
 
 	let mut site = Site {
-		pages: pages.to_owned(),
-		files: files.to_owned(),
+		pages,
+		files,
 		data,
 	};
 
-	let pages = pages.iter().par_bridge()
+	site.pages = site.pages.iter().par_bridge()
 		.filter_map(|page| build_site_page(page.to_owned(), site.to_owned(), &builder.renderers))
 		.collect::<Vec<_>>();
 
-	site.pages = pages.to_owned();
+	site.pages = site.pages.iter().par_bridge()
+		.map(|page| complete_site_page(page.to_owned(), site.to_owned(), &builder.renderers))
+		.collect::<Vec<_>>();
 
-	pages.iter().par_bridge().for_each(|page| {
+	site.pages.iter().par_bridge().for_each(|page| {
 		fs::write(&page.path, &page.content).unwrap_or_else(|err| {
 			error!("Unable to write to {:?}! {}", &page.path, err);
 			process::exit(exitcode::IOERR);
 		});
 	});
 
-	files.iter()
+	site.files.iter()
 		.filter(|p| !builder.output.as_path().join(p).exists())
 		.par_bridge().for_each(|p| {
 			let input_file = builder.input_dir.as_path().join(p);

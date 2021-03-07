@@ -19,6 +19,8 @@ actix-files = ">=0.6.0-beta.1"
 
 # Stable deps which rarely require updates.
 
+### HTML sanitizing [builder.rs]
+ammonia = "3.1.1"
 
 ### Markdown parsing [builder.rs]
 comrak = "0.9.1"
