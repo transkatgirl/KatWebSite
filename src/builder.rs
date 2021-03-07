@@ -142,7 +142,7 @@ fn create_page(input: PathBuf, output: PathBuf, renderers: &Renderers) -> Option
 	let content = extractor.remove().to_owned();
 	if content == "" {
 		debug!("{:?} does not contain frontmatter", &input);
-		return None // todo: symlink files that don't contain frontmatter using fs::soft_link
+		return None
 	}
 
 	page.data = toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
@@ -227,6 +227,9 @@ fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
 pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 	debug!("starting builder for {:?}", &builder.input_dir);
 
+	if builder.output.as_path().exists() {
+		fs::remove_dir_all(&builder.output)?;
+	}
 	fs::create_dir_all(&builder.output)?;
 
 	let input = fs::read_dir(&builder.input_dir).unwrap_or_else(|err| {
@@ -250,6 +253,11 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 		vec![]
 	};
 
+	let files = input.iter()
+		.filter_map(|path| path.file_name())
+		.map(|path| PathBuf::from(path))
+		.collect::<Vec<_>>();
+
 	let pages = input.iter()
 		.par_bridge()
 		.filter_map(|path| create_page(path.to_owned(), builder.output.to_owned(), &builder.renderers))
@@ -257,7 +265,7 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 
 	let mut site = Site {
 		pages: pages.to_owned(),
-		files: input.to_owned(), // TODO: make site.files relative to output folder
+		files: files,
 		data: data.to_owned(),
 	};
 

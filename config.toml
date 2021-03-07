@@ -6,7 +6,7 @@ file_dir = "/tmp/localhost_test"
 
 [[builder]]
 input_dir = "html/localhost_test" # Only files in the root of the mount are parsed, subdirectories are ignored.
-output = "/tmp/localhost_test"
+output = "/tmp/localhost_test" # If the output directory contains existing files, they *will* be removed.
 
 [builder.renderers]
 data = true
