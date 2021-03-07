@@ -10,7 +10,6 @@ use serde_derive::{Serialize, Deserialize};
 use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::Box, ffi::OsStr};
 
 // TODO:
-// - implement symlinking/copying from builder dir to output folder
 // - implement more of jeykll liquid
 //   - implement file includes
 // - implement layouts
@@ -92,8 +91,6 @@ pub struct Renderers {
 	pub markdown: bool,
 }
 
-fn default_true() -> bool { true }
-
 impl Default for Renderers {
 	fn default() -> Self { Renderers {
 		data: true,
@@ -144,7 +141,7 @@ fn create_page(input: PathBuf, output: PathBuf, defaults: &Object, renderers: &R
 	extractor.discard_first_line();
 
 	let content = extractor.remove();
-	if content == "" {
+	if content.is_empty() {
 		debug!("{:?} does not contain frontmatter", &input);
 		return None
 	}
@@ -156,7 +153,7 @@ fn create_page(input: PathBuf, output: PathBuf, defaults: &Object, renderers: &R
 
 	page.content = content.to_owned();
 
-	return Some(page)
+	Some(page)
 }
 
 fn render_markdown(input: &str) -> String {
@@ -183,8 +180,8 @@ fn render_sass(input: String) -> Result<String, Box<grass::Error>> {
 	grass::from_string(input, &options)
 }
 
-fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
-	let liquified = if renderers.liquid {
+fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Option<Page> {
+	let liquified = if renderers.liquid && page.path.as_path().extension() != Some(OsStr::new("liquid")) {
 		trace!("building {:?}", &page.path);
 
 		let template = ParserBuilder::with_stdlib()
@@ -222,10 +219,13 @@ fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
 			});
 			page.path.set_extension("css");
 		},
+		Some("liquid") if renderers.liquid => {
+			return None // .liquid files are meant for layouts/includes and shouldn't be processed directly.
+		},
 		_ => page.content = liquified,
 	}
 
-	page
+	Some(page)
 }
 
 pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
@@ -259,7 +259,7 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 
 	let files = input.iter()
 		.filter_map(|path| path.file_name())
-		.map(|path| PathBuf::from(path))
+		.map(PathBuf::from)
 		.collect::<Vec<_>>();
 
 	let pages = input.iter()
@@ -269,12 +269,12 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 
 	let mut site = Site {
 		pages: pages.to_owned(),
-		files: files,
-		data: data.to_owned(),
+		files: files.to_owned(),
+		data,
 	};
 
 	let pages = pages.iter().par_bridge()
-		.map(|page| build_site_page(page.to_owned(), site.to_owned(), &builder.renderers))
+		.filter_map(|page| build_site_page(page.to_owned(), site.to_owned(), &builder.renderers))
 		.collect::<Vec<_>>();
 
 	site.pages = pages.to_owned();
@@ -285,6 +285,24 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 			process::exit(exitcode::IOERR);
 		});
 	});
+
+	files.iter()
+		.filter(|p| !builder.output.as_path().join(p).exists())
+		.par_bridge().for_each(|p| {
+			let input_file = builder.input_dir.as_path().join(p);
+			let output_file = builder.output.as_path().join(p);
+
+			trace!("symlinking {:?}", &input_file);
+			fs::hard_link(&input_file, &output_file).unwrap_or_else(|err| {
+				trace!("Unable to symlink to {:?}! {}", &output_file, err);
+
+				trace!("copying {:?}...", &input_file);
+				fs::copy(&input_file, &output_file).unwrap_or_else(|err| {
+					error!("Unable to copy to {:?}! {}", &output_file, err);
+					process::exit(exitcode::IOERR);
+				});
+			});
+		});
 
 	Ok(())
 }
