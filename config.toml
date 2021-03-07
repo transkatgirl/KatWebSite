@@ -5,10 +5,14 @@ host = "localhost"
 file_dir = "/tmp/localhost_test"
 
 [[builder]]
-mount = "html/localhost_test" # Only files in the root of the mount are parsed, subdirectories are ignored.
+input_dir = "html/localhost_test" # Only files in the root of the mount are parsed, subdirectories are ignored.
 output = "/tmp/localhost_test"
 
-sanitize = true # unimplemented
+[builder.renderers]
+data = true
+liquid = true
+sass = true
+markdown = true
 
 [builder.default_dirs] # unimplemented
 layout_dir = "_layouts"

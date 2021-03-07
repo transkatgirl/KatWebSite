@@ -10,8 +10,7 @@ use serde_derive::{Serialize, Deserialize};
 use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::Box, ffi::OsStr};
 
 // TODO:
-// - finish implementing Site
-//   - allow symlinking/copying from builder dir to output folder
+// - implement symlinking/copying from builder dir to output folder
 // - implement more of jeykll liquid
 //   - implement file includes
 // - implement layouts
@@ -32,7 +31,7 @@ order of interpretation:
 #[derive(Serialize,Clone,Debug)]
 struct Site {
 	pages: Vec<Page>,
-	//files: Vec<PathBuf>,
+	files: Vec<PathBuf>,
 	data: Vec<Object>,
 }
 
@@ -46,12 +45,14 @@ struct Page {
 #[derive(Deserialize,Clone,Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Builder {
-	pub mount: PathBuf,
+	pub input_dir: PathBuf,
 	pub output: PathBuf,
 
-	pub sanitize: bool,
+	#[serde(default)]
+	pub renderers: Renderers,
 
-	pub default_dirs: Option<Dirs>,
+	#[serde(default)]
+	pub default_dirs: Dirs,
 
 	#[serde(default)]
 	pub default_vars: Object,
@@ -68,6 +69,40 @@ pub struct Dirs {
 	pub include_dir: PathBuf,
 }
 
+impl Default for Dirs {
+	fn default() -> Self {  Dirs {
+		layout_dir: PathBuf::new(),
+		include_dir: PathBuf::new(),
+	}}
+}
+
+#[derive(Deserialize,Clone,Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Renderers {
+	#[serde(default)]
+	pub data: bool,
+
+	#[serde(default)]
+	pub liquid: bool,
+
+	#[serde(default)]
+	pub sass: bool,
+
+	#[serde(default)]
+	pub markdown: bool,
+}
+
+fn default_true() -> bool { true }
+
+impl Default for Renderers {
+	fn default() -> Self { Renderers {
+		data: true,
+		liquid: true,
+		sass: true,
+		markdown: true,
+	}}
+}
+
 fn read_data(input: PathBuf) -> Object {
 	trace!("loading {:?}", &input);
 
@@ -82,7 +117,7 @@ fn read_data(input: PathBuf) -> Object {
 	})
 }
 
-fn create_page(input: PathBuf, output: PathBuf) -> Option<Page> {
+fn create_page(input: PathBuf, output: PathBuf, renderers: &Renderers) -> Option<Page> {
 	trace!("parsing frontmatter for {:?}", &input);
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
@@ -90,26 +125,34 @@ fn create_page(input: PathBuf, output: PathBuf) -> Option<Page> {
 		process::exit(exitcode::IOERR);
 	});
 
-	let mut extractor = Extractor::new(&input_str);
+	let mut page = Page {
+		path: output.join(&input.file_name().unwrap_or_default()),
+		data: Object::new(),
+		content: input_str,
+	};
+
+	if !renderers.liquid {
+		return Some(page)
+	}
+
+	let mut extractor = Extractor::new(&page.content);
 	extractor.select_by_terminator("---");
 	extractor.discard_first_line();
 
 	let content = extractor.remove().to_owned();
 	if content == "" {
 		debug!("{:?} does not contain frontmatter", &input);
-		return None
+		return None // todo: symlink files that don't contain frontmatter using fs::soft_link
 	}
 
-	let data: Object = toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
-		error!("Unable to parse {:?}'s frontmatter! {}", &input, err);
-		process::exit(exitcode::DATAERR);
+	page.data = toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
+		warn!("Unable to parse {:?}'s frontmatter! {}", &input, err);
+		Object::new()
 	});
 
-	Some ( Page {
-		path: output.join(&input.file_name().unwrap_or_default()),
-		data: data,
-		content: content,
-	})
+	page.content = content;
+
+	return Some(page)
 }
 
 fn render_markdown(input: &str) -> String {
@@ -122,6 +165,7 @@ fn render_markdown(input: &str) -> String {
 	options.extension.header_ids = Some("user-content-".to_string());
 	options.extension.footnotes = true;
 	options.extension.description_lists = true;
+	options.extension.front_matter_delimiter = Some("---".to_string());
 	options.parse.smart = true;
 	options.render.unsafe_ = true;
 
@@ -135,45 +179,45 @@ fn render_sass(input: String) -> Result<String, Box<grass::Error>> {
 	grass::from_string(input, &options)
 }
 
-fn build_site_page(mut page: Page, site: Site) -> Page {
+fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
 	trace!("building {:?}", &page.path);
 
-	let template = ParserBuilder::with_stdlib()
-		.build().unwrap_or_else(|err| {
-			error!("Unable to create liquid parser! {}", err);
-			process::exit(exitcode::SOFTWARE);
-		})
-		.parse(&page.content).unwrap_or_else(|err| {
-			error!("Unable to parse {:?}! {}", &page.path, err);
+	let liquified = if renderers.liquid {
+		let template = ParserBuilder::with_stdlib()
+			.build().unwrap_or_else(|err| {
+				error!("Unable to create liquid parser! {}", err);
+				process::exit(exitcode::SOFTWARE);
+			})
+			.parse(&page.content).unwrap_or_else(|err| {
+				error!("Unable to parse {:?}! {}", &page.path, err);
+				process::exit(exitcode::DATAERR);
+			});
+
+		template.render(&liquid::object!({
+			"site": site,
+			"page": page,
+		})).unwrap_or_else(|err| {
+			error!("Unable to render {:?}! {}", &page.path, err);
 			process::exit(exitcode::DATAERR);
-		});
+		})
+	} else {
+		page.content.to_owned()
+	};
 
-	let liquified = template.render(&liquid::object!({
-		"site": site,
-		"page": page,
-	})).unwrap_or_else(|err| {
-		error!("Unable to render {:?}! {}", &page.path, err);
-		process::exit(exitcode::DATAERR);
-	});
-
-	match page.path.as_path().extension() {
-		Some(ext) => { match ext.to_str() { // There's no way to make a static OsStr (yet).
-			Some("md") => {
-				trace!("generating {:?}", &page.path);
-				page.content = render_markdown(&liquified);
-				page.path.set_extension("html");
-			},
-			Some("sass") => {
-				trace!("generating {:?}", &page.path);
-				page.content = render_sass(liquified).unwrap_or_else(|err| {
-					error!("Unable to compile {:?}! {}", &page.path, err);
-					process::exit(exitcode::DATAERR);
-				});
-				page.path.set_extension("css");
-
-			},
-			_ => page.content = liquified,
-		}},
+	match page.path.as_path().extension().unwrap_or_default().to_str() {
+		Some("md") if renderers.markdown => {
+			trace!("generating {:?}", &page.path);
+			page.content = render_markdown(&liquified);
+			page.path.set_extension("html");
+		},
+		Some("sass") if renderers.sass => {
+			trace!("generating {:?}", &page.path);
+			page.content = render_sass(liquified).unwrap_or_else(|err| {
+				error!("Unable to compile {:?}! {}", &page.path, err);
+				process::exit(exitcode::DATAERR);
+			});
+			page.path.set_extension("css");
+		},
 		_ => page.content = liquified,
 	}
 
@@ -181,12 +225,12 @@ fn build_site_page(mut page: Page, site: Site) -> Page {
 }
 
 pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
-	debug!("starting builder for {:?}", &builder.mount);
+	debug!("starting builder for {:?}", &builder.input_dir);
 
 	fs::create_dir_all(&builder.output)?;
 
-	let input = fs::read_dir(&builder.mount).unwrap_or_else(|err| {
-		error!("Unable to open {:?}! {}", &builder.mount, err);
+	let input = fs::read_dir(&builder.input_dir).unwrap_or_else(|err| {
+		error!("Unable to open {:?}! {}", &builder.input_dir, err);
 		process::exit(exitcode::IOERR);
 	})
 		.filter_map(Result::ok)
@@ -196,25 +240,29 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 		.map(|e| e.path())
 		.collect::<Vec<_>>();
 
-	let data = input.iter()
-		.filter(|p| p.extension() == Some(OsStr::new("toml")))
-		.par_bridge()
-		.map(|path| read_data(path.to_owned()))
-		.collect::<Vec<_>>();
+	let data = if builder.renderers.data {
+		input.iter()
+			.filter(|p| p.extension() == Some(OsStr::new("toml")))
+			.par_bridge()
+			.map(|path| read_data(path.to_owned()))
+			.collect::<Vec<_>>()
+	} else {
+		vec![]
+	};
 
 	let pages = input.iter()
-		.filter(|p| p.extension() != Some(OsStr::new("toml")))
 		.par_bridge()
-		.filter_map(|path| create_page(path.to_owned(), builder.output.to_owned()))
+		.filter_map(|path| create_page(path.to_owned(), builder.output.to_owned(), &builder.renderers))
 		.collect::<Vec<_>>();
 
 	let mut site = Site {
 		pages: pages.to_owned(),
+		files: input.to_owned(), // TODO: make site.files relative to output folder
 		data: data.to_owned(),
 	};
 
 	let pages = pages.iter().par_bridge()
-		.map(|page| build_site_page(page.to_owned(), site.to_owned()))
+		.map(|page| build_site_page(page.to_owned(), site.to_owned(), &builder.renderers))
 		.collect::<Vec<_>>();
 
 	site.pages = pages.to_owned();
