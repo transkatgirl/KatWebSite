@@ -117,8 +117,12 @@ fn read_data(input: PathBuf) -> Object {
 	})
 }
 
-fn create_page(input: PathBuf, output: PathBuf, renderers: &Renderers) -> Option<Page> {
-	trace!("parsing frontmatter for {:?}", &input);
+fn create_page(input: PathBuf, output: PathBuf, defaults: &Object, renderers: &Renderers) -> Option<Page> {
+	if renderers.liquid {
+		trace!("parsing frontmatter for {:?}", &input);
+	} else {
+		trace!("loading {:?}", &input);
+	}
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
 		error!("Unable to read {:?}! {}", &input, err);
@@ -127,7 +131,7 @@ fn create_page(input: PathBuf, output: PathBuf, renderers: &Renderers) -> Option
 
 	let mut page = Page {
 		path: output.join(&input.file_name().unwrap_or_default()),
-		data: Object::new(),
+		data: defaults.to_owned(),
 		content: input_str,
 	};
 
@@ -139,18 +143,18 @@ fn create_page(input: PathBuf, output: PathBuf, renderers: &Renderers) -> Option
 	extractor.select_by_terminator("---");
 	extractor.discard_first_line();
 
-	let content = extractor.remove().to_owned();
+	let content = extractor.remove();
 	if content == "" {
 		debug!("{:?} does not contain frontmatter", &input);
 		return None
 	}
 
-	page.data = toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
+	page.data.extend(toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
 		warn!("Unable to parse {:?}'s frontmatter! {}", &input, err);
 		Object::new()
-	});
+	}));
 
-	page.content = content;
+	page.content = content.to_owned();
 
 	return Some(page)
 }
@@ -180,9 +184,9 @@ fn render_sass(input: String) -> Result<String, Box<grass::Error>> {
 }
 
 fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
-	trace!("building {:?}", &page.path);
-
 	let liquified = if renderers.liquid {
+		trace!("building {:?}", &page.path);
+
 		let template = ParserBuilder::with_stdlib()
 			.build().unwrap_or_else(|err| {
 				error!("Unable to create liquid parser! {}", err);
@@ -260,7 +264,7 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 
 	let pages = input.iter()
 		.par_bridge()
-		.filter_map(|path| create_page(path.to_owned(), builder.output.to_owned(), &builder.renderers))
+		.filter_map(|path| create_page(path.to_owned(), builder.output.to_owned(), &builder.default_vars, &builder.renderers))
 		.collect::<Vec<_>>();
 
 	let mut site = Site {

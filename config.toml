@@ -18,7 +18,7 @@ markdown = true
 layout_dir = "_layouts"
 include_dir = "_includes"
 
-[builder.default_vars] # unimplemented
+[builder.default_vars]
 title = "Hello World!"
 
 [server]
