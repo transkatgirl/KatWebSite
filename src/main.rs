@@ -76,9 +76,8 @@ async fn main() {
 		process::exit(exitcode::CONFIG);
 	});
 
-	match config.builder.is_empty() {
-		true => debug!("no page builder specified, skipping"),
-		false => info!("Generating site pages"),
+	if config.builder.is_empty() {
+		debug!("no page builders specified, skipping builder init");
 	}
 	for builder in &config.builder {
 		builder::run_builder(builder).unwrap_or_else(|err| {

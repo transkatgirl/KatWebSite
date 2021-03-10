@@ -7,7 +7,7 @@ use liquid::{ParserBuilder, Object, model::Value};
 use log::{trace, warn, debug, error, info};
 use rayon::prelude::*;
 use serde_derive::{Serialize, Deserialize};
-use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::Box, ffi::OsStr};
+use std::{process, fs, path::{Path, PathBuf}, error::Error, boxed::Box, ffi::OsStr};
 
 // TODO:
 // - implement more of jeykll liquid
@@ -15,7 +15,6 @@ use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::B
 // - improve config parsing
 // - possible feature: implement file minifiers (html, css, js)
 // - possible feature: implement media optimization
-// - cleanup run_builder()
 
 // NOTE: KatSite code may be useful as a reference
 
@@ -116,21 +115,21 @@ impl Default for Renderers {
 }
 
 fn read_data(input: PathBuf) -> Option<Object> {
-	trace!("loading {:?}", &input);
+	debug!("loading {:?}", &input);
 
 	match fs::read_to_string(&input) {
 		Ok(text) => {
 			match toml::from_str(&text) {
-				Ok(obj) => return obj,
+				Ok(obj) => obj,
 				Err(err) => {
 					warn!("Unable to parse {:?}! {}", &input, err);
-					return None
+					None
 				}
 			}
 		}
 		Err(err) => {
 			warn!("Unable to read {:?}! {}", &input, err);
-			return None
+			None
 		}
 	}
 }
@@ -156,7 +155,7 @@ fn read_path(input_dir: &Path) -> Vec<PathBuf> {
 }
 
 fn create_page(input: PathBuf, output: PathBuf, defaults: &Object, renderers: &Renderers) -> Option<Page> {
-	trace!("loading {:?}", &input);
+	debug!("loading {:?}", &input);
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
 		warn!("Unable to read {:?}! {}", &input, err);
@@ -232,7 +231,7 @@ fn render_liquid(raw_template: &str, page: &Page, site: &Site) -> Result<String,
 
 fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
 	if renderers.liquid {
-		trace!("building {:?}", &page.path);
+		debug!("building {:?}", &page.path);
 
 		page.content = render_liquid(&page.content, &page, &site).unwrap_or_else(|err| {
 			error!("Unable to build {:?}! {}", &page.path, err);
@@ -274,7 +273,7 @@ fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_d
 	}
 
 	if let Some(Value::Scalar(template)) = page.data.get("layout") {
-		trace!("building layout for {:?}", &page.path);
+		debug!("applying layout to {:?}", &page.path);
 
 		let template_path = input_dir
 			.join(&dirs.layout_dir)
@@ -302,7 +301,7 @@ fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_d
 }
 
 pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
-	debug!("starting builder for {:?}", &builder.input_dir);
+	info!("Generating pages in {:?}", &builder.input_dir);
 
 	if builder.output.as_path().exists() {
 		fs::remove_dir_all(&builder.output)?;
