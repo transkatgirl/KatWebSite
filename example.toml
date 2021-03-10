@@ -24,9 +24,9 @@ title = "Hello World!"
 host = "localhost" # The Host header that this vhost serves. Must be an exact match.
 
 [[vhost.redir]] # An HTTP redirect.
-target = "/redir/*" # The location this redirect targets (ex: /redir would target example.com/redir). Supports wildcards and path deserialization.
+target = "/redir/*" # The location this redirect targets (ex: /redir would target example.com/redir), defaults to "/". Supports wildcards and path deserialization.
 dest = "https://example.com" # The URL this redirects to.
-permanent = false # If the redirect should be permanent (ex: redirecting from an old domain to a new one), or temporary (ex: link shortening or a "coming soon" page). In doubt, use a temporary redirect unless you are absolutely sure you will not need to remove the redirect later on.
+permanent = false # If the redirect should be permanent (ex: redirecting from an old domain to a new one), or temporary (ex: link shortening or a "coming soon" page). In doubt, use a temporary redirect unless you are absolutely sure you will not need to remove the redirect later on. Defaults to using a temporary redirect.
 
 [[vhost.redir]]
 target = "/redirect/{path:.*}" # Use path deserialization to append the end of the path to the target.
@@ -34,7 +34,7 @@ dest = "https://example.com" # All deserialized items are appended to the path a
 permanent = false
 
 [[vhost.files]] # A virtual host file handler.
-mount = "/" # The path this file hander serves (ex: /assets would serve files to example.com/assets/...).
+mount = "/" # The path this file hander serves (ex: /assets would serve files to example.com/assets/...). Defaults to "/".
 file_dir = "html/localhost" # Disk location files are loaded from.
 
 [[vhost.files]]
@@ -83,7 +83,7 @@ tls_bind = ["[::1]:8181", "127.0.0.1:8181"]
 
 # If neither http_bind or tls_bind are specified, the HTTP server will not be started.
 
-# The formatting string used for request logs.
+# The formatting string used for request logs. Default is below.
 log_format = "%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D"
 # Format (taken from actix_web::middleware::Logger):
 # %%		The percent sign
