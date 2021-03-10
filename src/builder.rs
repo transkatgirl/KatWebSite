@@ -152,7 +152,7 @@ fn read_path(input_dir: &Path) -> Vec<PathBuf> {
 	}
 }
 
-fn create_page(input: PathBuf, output: PathBuf, defaults: &Object, renderers: &Renderers) -> Option<Page> {
+fn create_page(input: PathBuf, defaults: &Object, renderers: &Renderers) -> Option<Page> {
 	debug!("loading {:?}", &input);
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
@@ -161,7 +161,7 @@ fn create_page(input: PathBuf, output: PathBuf, defaults: &Object, renderers: &R
 	});
 
 	let mut page = Page {
-		path: output.join(&input.file_name().unwrap_or_default()),
+		path: PathBuf::from(input.file_name().unwrap_or_default()),
 		data: defaults.to_owned(),
 		content: input_str,
 	};
@@ -343,7 +343,7 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 
 	let pages = input.iter()
 		.par_bridge()
-		.filter_map(|path| create_page(path.to_owned(), builder.output.to_owned(), &builder.default_vars, &builder.renderers))
+		.filter_map(|path| create_page(path.to_owned(), &builder.default_vars, &builder.renderers))
 		.collect::<Vec<_>>();
 
 	let mut site = Site {
@@ -361,8 +361,10 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 		.collect::<Vec<_>>();
 
 	site.pages.iter().par_bridge().for_each(|page| {
-		fs::write(&page.path, &page.content).unwrap_or_else(|err| {
-			error!("Unable to write to {:?}! {}", &page.path, err);
+		let output_file = builder.output.as_path().join(&page.path);
+
+		fs::write(&output_file, &page.content).unwrap_or_else(|err| {
+			error!("Unable to write to {:?}! {}", &output_file, err);
 			process::exit(exitcode::IOERR);
 		});
 	});
@@ -376,10 +378,13 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 					.unwrap_or(false)
 			})
 			.for_each(|p| {
-				trace!("copying {:?}...", p.path());
+				trace!("symlinking {:?}...", p.path());
 
+				let input_file = p.path().canonicalize().unwrap_or_else(|_| p.path());
 				let output_file = builder.output.as_path().join(p.file_name());
-				fs::copy(p.path(), &output_file).unwrap_or_else(|err| {
+
+				#[allow(deprecated)]
+				fs::soft_link(input_file, &output_file).unwrap_or_else(|err| {
 					error!("Unable to copy to {:?}! {}", &output_file, err);
 					process::exit(exitcode::IOERR);
 				});
