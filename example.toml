@@ -18,31 +18,33 @@ include_dir = "_includes" # Folder to load Liquid includes from.
 [builder.default_vars] # Liquid variables added to *all* files. This will not overwrite variables specified in the frontmatter.
 title = "Hello World!"
 
+
+
 [[vhost]] # A virtual host. Virtual hosts and their handlers will be registered in the order they are specified in.
 host = "localhost" # The Host header that this vhost serves. Must be an exact match.
 
-[[vhost.redir]]
+[[vhost.redir]] # An HTTP redirect.
 target = "/redir/*" # The location this redirect targets (ex: /redir would target example.com/redir). Supports wildcards and path deserialization.
 dest = "https://example.com" # The URL this redirects to.
-permanent = false # If the redirect should be permanent (ex: redirecting from an old domain to a new one), or temporary (ex: link shortening or a "coming soon" page).
+permanent = false # If the redirect should be permanent (ex: redirecting from an old domain to a new one), or temporary (ex: link shortening or a "coming soon" page). In doubt, use a temporary redirect unless you are absolutely sure you will not need to remove the redirect later on.
 
 [[vhost.redir]]
 target = "/redirect/{path:.*}" # Use path deserialization to append the end of the path to the target.
 dest = "https://example.com" # All deserialized items are appended to the path as items (ex: test,test2 -> [dest]/test/test2)
 permanent = false
 
-[[vhost.files]]
-mount = "/test2"
-file_dir = "html/test"
-
 [[vhost.files]] # A virtual host file handler.
 mount = "/" # The path this file hander serves (ex: /assets would serve files to example.com/assets/...).
 file_dir = "html/localhost" # Disk location files are loaded from.
 
+[[vhost.files]]
+mount = "/test2"
+file_dir = "html/test"
+
 [vhost.tls] # TLS configuration for the virtual host. If this is not specified, the virtual host will only be reachable over HTTP.
-pemfiles = [
-	"/home/kat/Downloads/localhost.pem", # The TLS certificate file used by the listener.
-	"/home/kat/Downloads/localhost-key.pem" # The TLS key used by the listener.
+pemfiles = [ # PEM file types are automatically detected, and can be specified in any order.
+	"localhost.pem", # The TLS certificate file used by the listener.
+	"localhost-key.pem" # The TLS key used by the listener.
 ]
 http_dest = "https://localhost:8181" # If this is specified, all HTTP requests going to this vhost are redirected to the specified HTTPS destination. If this isn't specified, HTTP requests are handled the same way as HTTPS requests.
 
@@ -72,12 +74,14 @@ content-security-policy = "default-src 'none'; connect-src 'self'; font-src 'sel
 referrer-policy = "no-referrer" # Disable the HTTP referrer header to improve security.
 x-content-type-options = "nosniff" # Prevent browsers from sniffing the MIME types of resources.
 
-[server]
+[server] # Global HTTP server configuration.
 # IP addresses to bind the HTTP listener to.
 http_bind = ["[::1]:8080", "127.0.0.1:8080"]
 
 # IP addresses to bind the HTTPS listener to.
 tls_bind = ["[::1]:8181", "127.0.0.1:8181"]
+
+# If neither http_bind or tls_bind are specified, the HTTP server will not be started.
 
 # The formatting string used for request logs.
 log_format = "%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D"

@@ -10,7 +10,7 @@ use serde_derive::{Serialize, Deserialize};
 use std::{process, fs, path::{Path, PathBuf}, error::Error, boxed::Box};
 
 // TODO:
-// - implement more of jeykll liquid
+// - implement more of jeykll liquid and/or katsite specific liquid features
 // - possible feature: implement file minifiers (html, css, js)
 // - possible feature: implement media optimization
 
