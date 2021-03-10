@@ -5,24 +5,8 @@ host = "localhost"
 file_dir = "/tmp/localhost_test"
 
 [[builder]]
-input_dir = "html/localhost_test" # Only files in the root of the mount are parsed, subdirectories are ignored.
-output = "/tmp/localhost_test" # If the output directory contains existing files, they *will* be removed.
-
-[builder.renderers]
-data = true
-liquid = true
-sass = true
-markdown = true
-sanitizer = true
-layout = true
-
-[builder.default_dirs]
-data_dir = "_data"
-layout_dir = "_layouts"
-include_dir = "_includes"
-
-[builder.default_vars]
-title = "Hello World!"
+input_dir = "html/localhost_test"
+output = "/tmp/localhost_test"
 
 [server]
 http_bind = ["[::1]:8080", "127.0.0.1:8080"]

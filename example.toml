@@ -1,5 +1,24 @@
-# A virtual host. Virtual hosts and their handlers will be registered in the order they are specified in.
-[[vhost]]
+[[builder]] # A static site builder. Sites are built in the order they are specified in.
+input_dir = "sites/test" # Where to read input files from. Only files in the root of the directory get parsed, subdirectories are ignored.
+output = "html/test" # Where to output generated files to. WARNING: If the output directory contains existing files, they *will* be removed.
+
+[builder.renderers] # A list of renderers to use. If this is not specified, all renderers are enabled (except those that restrict functionality instead of adding it, like the HTML sanitizer). If this is specified, all renderers default to being off, and must be enabled manually.
+data = true # Load TOML files from data_dir into site.data.
+liquid = true # Parse input files as Liquid with TOML frontmatter. NOTE: If this is enabled, files must contain frontmatter delimiters (---) to be handled. If this is disabled, all files in the directory are parsed.
+sass = true # Compile SASS files into CSS.
+markdown = true # Compile markdown files into HTML. This supports both GFM and Comrak markdown extensions.
+sanitizer = true # Sanitize untrusted HTML files.
+layout = true # Apply Liquid layouts to files. This does not require the liquid renderer to be enabled, but if the liquid renderer is disabled, frontmatter variables and Liquid includes will not be available to the layout handler.
+
+[builder.default_dirs] # A list of working directories for various renderers (relative to input_dir). Defaults are listed below.
+data_dir = "_data" # Folder to load TOML files from.
+layout_dir = "_layouts" # Folder to load Liquid layouts from.
+include_dir = "_includes" # Folder to load Liquid includes from.
+
+[builder.default_vars] # Liquid variables added to *all* files. This will not overwrite variables specified in the frontmatter.
+title = "Hello World!"
+
+[[vhost]] # A virtual host. Virtual hosts and their handlers will be registered in the order they are specified in.
 host = "localhost" # The Host header that this vhost serves. Must be an exact match.
 
 [[vhost.redir]]
