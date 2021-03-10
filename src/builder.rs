@@ -3,7 +3,7 @@
 use comrak::ComrakOptions;
 use extract_frontmatter::Extractor;
 use grass::{Options, OutputStyle};
-use liquid::{ParserBuilder, Object};
+use liquid::{ParserBuilder, Object, model::Value};
 use log::{trace, warn, debug, error, info};
 use rayon::prelude::*;
 use serde_derive::{Serialize, Deserialize};
@@ -12,8 +12,6 @@ use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::B
 // TODO:
 // - implement more of jeykll liquid
 //   - implement file includes
-// - implement layouts
-//   - allow specifying layouts in frontmatter
 // - possible feature: implement file minifiers (html, css, js)
 // - possible feature: implement media optimization
 // - code cleanup
@@ -58,6 +56,7 @@ pub struct Builder {
 
 }
 
+// FIXME
 #[derive(Deserialize,Clone,Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Dirs {
@@ -70,8 +69,8 @@ pub struct Dirs {
 
 impl Default for Dirs {
 	fn default() -> Self {  Dirs {
-		layout_dir: PathBuf::new(),
-		include_dir: PathBuf::new(),
+		layout_dir: PathBuf::from("_layouts"),
+		include_dir: PathBuf::from("_includes"),
 	}}
 }
 
@@ -92,6 +91,9 @@ pub struct Renderers {
 
 	#[serde(default)]
 	pub sanitizer: bool,
+
+	#[serde(default)]
+	pub layout: bool,
 }
 
 impl Default for Renderers {
@@ -101,6 +103,7 @@ impl Default for Renderers {
 		sass: true,
 		markdown: true,
 		sanitizer: false,
+		layout: true,
 	}}
 }
 
@@ -187,61 +190,81 @@ fn render_sass(input: String) -> Result<String, Box<grass::Error>> {
 	grass::from_string(input, &options)
 }
 
+fn render_liquid(raw_template: &str, page: &Page, site: &Site) -> Result<String, liquid::Error> {
+	let parsed_template = ParserBuilder::with_stdlib()
+		.build()?
+		.parse(raw_template)?;
+
+	parsed_template.render(&liquid::object!({
+		"site": site,
+		"page": page,
+	}))
+}
+
 fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Option<Page> {
-	let liquified = if renderers.liquid && page.path.as_path().extension() != Some(OsStr::new("liquid")) {
+	if renderers.liquid && page.path.as_path().extension() != Some(OsStr::new("liquid")) {
 		trace!("building {:?}", &page.path);
 
-		let template = ParserBuilder::with_stdlib()
-			.build().unwrap_or_else(|err| {
-				error!("Unable to create liquid parser! {}", err);
-				process::exit(exitcode::SOFTWARE);
-			})
-			.parse(&page.content).unwrap_or_else(|err| {
-				error!("Unable to parse {:?}! {}", &page.path, err);
-				process::exit(exitcode::DATAERR);
-			});
-
-		template.render(&liquid::object!({
-			"site": site,
-			"page": page,
-		})).unwrap_or_else(|err| {
-			error!("Unable to render {:?}! {}", &page.path, err);
+		page.content = render_liquid(&page.content, &page, &site).unwrap_or_else(|err| {
+			error!("Unable to build {:?}! {}", &page.path, err);
 			process::exit(exitcode::DATAERR);
 		})
-	} else {
-		page.content.to_owned()
 	};
 
 	match page.path.as_path().extension().unwrap_or_default().to_str() {
 		Some("md") if renderers.markdown => {
 			trace!("generating {:?}", &page.path);
-			page.content = render_markdown(&liquified, renderers);
+			page.content = render_markdown(&page.content, renderers);
 			page.path.set_extension("html");
 		},
 		Some("sass") if renderers.sass => {
 			trace!("generating {:?}", &page.path);
-			page.content = render_sass(liquified).unwrap_or_else(|err| {
+			page.content = render_sass(page.content.to_owned()).unwrap_or_else(|err| {
 				error!("Unable to compile {:?}! {}", &page.path, err);
 				process::exit(exitcode::DATAERR);
 			});
 			page.path.set_extension("css");
 		},
-		Some("liquid") if renderers.liquid => {
-			return None // .liquid files are meant for layouts/includes and shouldn't be processed directly.
-		},
-		_ => page.content = liquified,
+		_ => (),
 	}
 
 	Some(page)
 }
 
-fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
+fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_dir: &Path, dirs: &Dirs) -> Page {
 	match page.path.as_path().extension().unwrap_or_default().to_str() {
 		Some("html") if renderers.sanitizer => {
 			trace!("sanitizing {:?}", &page.path);
 			page.content = ammonia::clean(&page.content);
 		},
 		_ => (),
+	}
+
+	if !renderers.layout {
+		return page
+	}
+
+	if let Some(Value::Scalar(template)) = page.data.get("layout") {
+		trace!("building layout for {:?}", &page.path);
+
+		let template_path = input_dir.join(&dirs.layout_dir).join(template.to_owned().into_string());
+
+		match fs::read_to_string(&template_path) {
+			Ok(template_content) => {
+				page.content = render_liquid(&template_content, &page, &site).unwrap_or_else(|err| {
+					error!("Unable to build layout for {:?}! {}", &page.path, err);
+					process::exit(exitcode::DATAERR);
+				});
+
+				match template_path.as_path().extension().unwrap_or_default().to_str() {
+					Some(ext) => page.path.set_extension(ext),
+					_ => true,
+				};
+			},
+			Err(err) => {
+				warn!("Unable to load {:?}! {}", &template_path, err);
+			}
+		}
 	}
 
 	page
@@ -297,7 +320,7 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 		.collect::<Vec<_>>();
 
 	site.pages = site.pages.iter().par_bridge()
-		.map(|page| complete_site_page(page.to_owned(), site.to_owned(), &builder.renderers))
+		.map(|page| complete_site_page(page.to_owned(), site.to_owned(), &builder.renderers, &builder.input_dir, &builder.default_dirs))
 		.collect::<Vec<_>>();
 
 	site.pages.iter().par_bridge().for_each(|page| {
