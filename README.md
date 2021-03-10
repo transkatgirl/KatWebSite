@@ -13,13 +13,16 @@ KatWebSite is currently beta software and must be compiled from source. Pre-comp
 ## Usage
 
 ### CLI arguments
-KatSite has a basic cli interface, which can be used to change the config file that gets loaded or increase/decrease the logging verbosity. You can view a list of all CLI flags by running `katsite --help`.
+KatWebSite has a basic cli interface, which can be used to change the config file that gets loaded or increase/decrease the logging verbosity. You can view a list of all CLI flags by running `katsite --help`.
 
 ### Configuration
 KatWebSite's configuration is specified in the `config.toml` file by default. An example file containing all the configuration options (along with default values if they exist) can be found in `example.toml`. To prevent partial breakage when upgrading/downgrading, KatWebSite will fail to parse the configuration if unknown values are specified.
 
+#### HTTP server
+KatWebSite comes with a built-in HTTP(S) server that is robust and performant enough that it can be exposed directly to the public facing internet, if desired. It supports HTTP/2, has a secure TLS stack, has on-the-fly Gzip / Brotli compression, and can easily be configured through the config file. However, this server has a fairly minimal feature set, and more complex sites may be better off putting it behind a reverse proxy, or disabling it entirely.
+
 #### Site building
-KatSite's configuration tries to be flexible yet simple, and doesn't try to force a rigid directory structure on you. Here's how a site builder processes files:
+KatWebSite's site builder tries to be flexible yet simple, and avoids forcing a rigid structure on you. Here's how it handles input files:
 - [builder.input_dir] - The root directory for the builder.
   - [filetype: directory] - Subdirectories in the builder directory are ignored. This may be useful if you are trying to nest different site builders in a directory.
   - [filetype: symlink] - Soft symbolic links are canonicalized and created in the output directory without being parsed. This may be useful for static asset directories which should not be processed, or just copying the contents of a file with frontmatter instead of having it get parsed.
@@ -37,7 +40,7 @@ KatSite's configuration tries to be flexible yet simple, and doesn't try to forc
     * [include_dir] - If Liquid templating is enabled, all files in this directory can be used as includes. Files outside this directory cannot be used in includes.
 
 #### Liquid
-KatSite uses the [Liquid templating language](https://shopify.github.io/liquid/), with a slightly expanded [standard library](https://docs.rs/liquid-lib/0.22.0/liquid_lib/). KatSite-specific (not from liquid-lib) additions are listed below:
+KatWebSite uses the [Liquid templating language](https://shopify.github.io/liquid/), with a slightly expanded [standard library](https://docs.rs/liquid-lib/0.22.0/liquid_lib/). KatWebSite-specific (not from liquid-lib) additions are listed below:
 - [variables]
   - site: 
     - pages: Array of [type:Page] - All parsed files in the input directory.
