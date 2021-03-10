@@ -1,5 +1,5 @@
 [[builder]] # A static site builder. Sites are built in the order they are specified in.
-input_dir = "sites/test" # Where to read input files from. Only files in the root of the directory get parsed, subdirectories are ignored.
+input_dir = "sites/test" # Where to read input files from. Only files in the root of the directory get parsed, subdirectories (besides builder.default_dirs) are ignored. Symbolic links are not parsed, and files that are not parsed are symlinked/copied to the output dir.
 output = "html/test" # Where to output generated files to. WARNING: If the output directory contains existing files, they *will* be removed.
 
 [builder.renderers] # A list of renderers to use. If this is not specified, all renderers are enabled (except those that restrict functionality instead of adding it, like the HTML sanitizer). If this is specified, all renderers default to being off, and must be enabled manually.

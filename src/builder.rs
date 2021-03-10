@@ -367,6 +367,23 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 		});
 	});
 
+	if let Ok(dir) = fs::read_dir(&builder.input_dir) {
+		dir
+			.filter_map(Result::ok)
+			.filter(|e| {
+				e.file_type()
+					.map(|t| t.is_symlink())
+					.unwrap_or(false)
+			})
+			.for_each(|p| {
+				let output_file = builder.output.as_path().join(p.file_name());
+				fs::copy(p.path(), &output_file).unwrap_or_else(|err| {
+					error!("Unable to copy to {:?}! {}", &output_file, err);
+					process::exit(exitcode::IOERR);
+				});
+			});
+	}
+
 	site.files.iter()
 		.filter(|p| !builder.output.as_path().join(p).exists())
 		.par_bridge().for_each(|p| {
