@@ -3,16 +3,14 @@
 use comrak::ComrakOptions;
 use extract_frontmatter::Extractor;
 use grass::{Options, OutputStyle};
-use liquid::{ParserBuilder, Object, model::Value};
+use liquid::{ParserBuilder, Object, model::Value, partials::{LazyCompiler, InMemorySource}};
 use log::{trace, warn, debug, error, info};
 use rayon::prelude::*;
 use serde_derive::{Serialize, Deserialize};
-use std::{process, fs, path::{Path, PathBuf}, error::Error, boxed::Box, ffi::OsStr};
+use std::{process, fs, path::{Path, PathBuf}, error::Error, boxed::Box};
 
 // TODO:
 // - implement more of jeykll liquid
-//   - implement file includes
-// - improve config parsing
 // - possible feature: implement file minifiers (html, css, js)
 // - possible feature: implement media optimization
 
@@ -219,8 +217,9 @@ fn render_sass(input: String) -> Result<String, Box<grass::Error>> {
 	grass::from_string(input, &options)
 }
 
-fn render_liquid(raw_template: &str, page: &Page, site: &Site) -> Result<String, liquid::Error> {
+fn render_liquid(raw_template: &str, page: &Page, site: &Site, partials: InMemorySource) -> Result<String, liquid::Error> {
 	ParserBuilder::with_stdlib()
+		.partials(LazyCompiler::new(partials))
 		.build()?
 		.parse(raw_template)?
 		.render(&liquid::object!({
@@ -229,11 +228,11 @@ fn render_liquid(raw_template: &str, page: &Page, site: &Site) -> Result<String,
 	}))
 }
 
-fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
+fn build_site_page(mut page: Page, site: Site, renderers: &Renderers, partials: InMemorySource) -> Page {
 	if renderers.liquid {
 		debug!("building {:?}", &page.path);
 
-		page.content = render_liquid(&page.content, &page, &site).unwrap_or_else(|err| {
+		page.content = render_liquid(&page.content, &page, &site, partials).unwrap_or_else(|err| {
 			error!("Unable to build {:?}! {}", &page.path, err);
 			process::exit(exitcode::DATAERR);
 		})
@@ -259,7 +258,7 @@ fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
 	page
 }
 
-fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_dir: &Path, dirs: &Dirs) -> Page {
+fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_dir: &Path, dirs: &Dirs, partials: InMemorySource) -> Page {
 	match page.path.as_path().extension().unwrap_or_default().to_str() {
 		Some("html") if renderers.sanitizer => {
 			trace!("sanitizing {:?}", &page.path);
@@ -281,9 +280,10 @@ fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_d
 
 		match fs::read_to_string(&template_path) {
 			Ok(template_content) => {
-				page.content = render_liquid(&template_content, &page, &site).unwrap_or_else(|err| {
-					error!("Unable to build layout for {:?}! {}", &page.path, err);
-					process::exit(exitcode::DATAERR);
+				page.content = render_liquid(&template_content, &page, &site, partials)
+					.unwrap_or_else(|err| {
+						error!("Unable to build layout for {:?}! {}", &page.path, err);
+						process::exit(exitcode::DATAERR);
 				});
 
 				match template_path.as_path().extension().unwrap_or_default().to_str() {
@@ -309,9 +309,24 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 
 	fs::create_dir_all(&builder.output)?;
 
+
+	let mut partials = InMemorySource::new();
+	if builder.renderers.liquid {
+		for file in read_path(&builder.input_dir.as_path().join(&builder.default_dirs.include_dir)) {
+			debug!("loading {:?}", &file);
+			partials.add(
+				file.file_stem().unwrap_or_default().to_str().unwrap_or_default(),
+				fs::read_to_string(&file).unwrap_or_else(|err| {
+					warn!("Unable to read {:?}! {}", &file, err);
+					String::new()
+				})
+			);
+		}
+	}
+
+
 	let data = if builder.renderers.data {
 		read_path(&builder.input_dir.as_path().join(&builder.default_dirs.data_dir)).iter()
-			.filter(|p| p.extension() == Some(OsStr::new("toml")))
 			.par_bridge()
 			.filter_map(|path| read_data(path.to_owned()))
 			.collect::<Vec<_>>()
@@ -338,11 +353,11 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 	};
 
 	site.pages = site.pages.iter().par_bridge()
-		.map(|page| build_site_page(page.to_owned(), site.to_owned(), &builder.renderers))
+		.map(|page| build_site_page(page.to_owned(), site.to_owned(), &builder.renderers, partials.to_owned()))
 		.collect::<Vec<_>>();
 
 	site.pages = site.pages.iter().par_bridge()
-		.map(|page| complete_site_page(page.to_owned(), site.to_owned(), &builder.renderers, &builder.input_dir, &builder.default_dirs))
+		.map(|page| complete_site_page(page.to_owned(), site.to_owned(), &builder.renderers, &builder.input_dir, &builder.default_dirs, partials.to_owned()))
 		.collect::<Vec<_>>();
 
 	site.pages.iter().par_bridge().for_each(|page| {
