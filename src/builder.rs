@@ -12,6 +12,7 @@ use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::B
 // TODO:
 // - implement more of jeykll liquid
 //   - implement file includes
+// - improve config parsing
 // - possible feature: implement file minifiers (html, css, js)
 // - possible feature: implement media optimization
 // - code cleanup
@@ -122,11 +123,7 @@ fn read_data(input: PathBuf) -> Object {
 }
 
 fn create_page(input: PathBuf, output: PathBuf, defaults: &Object, renderers: &Renderers) -> Option<Page> {
-	if renderers.liquid {
-		trace!("parsing frontmatter for {:?}", &input);
-	} else {
-		trace!("loading {:?}", &input);
-	}
+	trace!("loading {:?}", &input);
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
 		error!("Unable to read {:?}! {}", &input, err);
@@ -201,8 +198,8 @@ fn render_liquid(raw_template: &str, page: &Page, site: &Site) -> Result<String,
 	}))
 }
 
-fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Option<Page> {
-	if renderers.liquid && page.path.as_path().extension() != Some(OsStr::new("liquid")) {
+fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Page {
+	if renderers.liquid {
 		trace!("building {:?}", &page.path);
 
 		page.content = render_liquid(&page.content, &page, &site).unwrap_or_else(|err| {
@@ -228,7 +225,7 @@ fn build_site_page(mut page: Page, site: Site, renderers: &Renderers) -> Option<
 		_ => (),
 	}
 
-	Some(page)
+	page
 }
 
 fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_dir: &Path, dirs: &Dirs) -> Page {
@@ -247,7 +244,9 @@ fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_d
 	if let Some(Value::Scalar(template)) = page.data.get("layout") {
 		trace!("building layout for {:?}", &page.path);
 
-		let template_path = input_dir.join(&dirs.layout_dir).join(template.to_owned().into_string());
+		let template_path = input_dir
+			.join(&dirs.layout_dir)
+			.join(template.to_owned().into_string());
 
 		match fs::read_to_string(&template_path) {
 			Ok(template_content) => {
@@ -257,8 +256,8 @@ fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_d
 				});
 
 				match template_path.as_path().extension().unwrap_or_default().to_str() {
+					Some("") | None => true,
 					Some(ext) => page.path.set_extension(ext),
-					_ => true,
 				};
 			},
 			Err(err) => {
@@ -316,7 +315,7 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 	};
 
 	site.pages = site.pages.iter().par_bridge()
-		.filter_map(|page| build_site_page(page.to_owned(), site.to_owned(), &builder.renderers))
+		.map(|page| build_site_page(page.to_owned(), site.to_owned(), &builder.renderers))
 		.collect::<Vec<_>>();
 
 	site.pages = site.pages.iter().par_bridge()
