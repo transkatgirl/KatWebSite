@@ -17,6 +17,7 @@ sanitizer = true
 layout = true
 
 [builder.default_dirs]
+data_dir = "_data"
 layout_dir = "_layouts"
 include_dir = "_includes" # unimplemented
 

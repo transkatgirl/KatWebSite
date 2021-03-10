@@ -77,12 +77,8 @@ async fn main() {
 	});
 
 	match config.builder.is_empty() {
-		true => {
-			debug!("no page builder specified, skipping")
-		},
-		false => (
-			info!("Generating site pages")
-		),
+		true => debug!("no page builder specified, skipping"),
+		false => info!("Generating site pages"),
 	}
 	for builder in &config.builder {
 		builder::run_builder(builder).unwrap_or_else(|err| {

@@ -15,16 +15,9 @@ use std::{process, iter, fs, path, path::{Path, PathBuf}, error::Error, boxed::B
 // - improve config parsing
 // - possible feature: implement file minifiers (html, css, js)
 // - possible feature: implement media optimization
-// - code cleanup
-//   * katsite code may be useful as a reference
+// - cleanup run_builder()
 
-/*
-order of interpretation:
-- frontmatter/data file parsing
-- liquid parsing
-- markdown parsing
-- layout parsing
-*/
+// NOTE: KatSite code may be useful as a reference
 
 #[derive(Serialize,Clone,Debug)]
 struct Site {
@@ -54,24 +47,38 @@ pub struct Builder {
 
 	#[serde(default)]
 	pub default_vars: Object,
-
 }
 
-// FIXME
 #[derive(Deserialize,Clone,Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Dirs {
-	#[serde(default)]
+	#[serde(default = "default_data_dir")]
+	pub data_dir: PathBuf,
+
+	#[serde(default = "default_layout_dir")]
 	pub layout_dir: PathBuf,
 
-	#[serde(default)]
+	#[serde(default = "default_include_dir")]
 	pub include_dir: PathBuf,
+}
+
+fn default_data_dir() -> PathBuf {
+	PathBuf::from("_data")
+}
+
+fn default_layout_dir() -> PathBuf {
+	PathBuf::from("_layouts")
+}
+
+fn default_include_dir() -> PathBuf {
+	PathBuf::from("_includes")
 }
 
 impl Default for Dirs {
 	fn default() -> Self {  Dirs {
-		layout_dir: PathBuf::from("_layouts"),
-		include_dir: PathBuf::from("_includes"),
+		data_dir: default_data_dir(),
+		layout_dir: default_layout_dir(),
+		include_dir: default_include_dir(),
 	}}
 }
 
@@ -108,25 +115,51 @@ impl Default for Renderers {
 	}}
 }
 
-fn read_data(input: PathBuf) -> Object {
+fn read_data(input: PathBuf) -> Option<Object> {
 	trace!("loading {:?}", &input);
 
-	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
-		error!("Unable to read {:?}! {}", &input, err);
-		process::exit(exitcode::IOERR);
-	});
+	match fs::read_to_string(&input) {
+		Ok(text) => {
+			match toml::from_str(&text) {
+				Ok(obj) => return obj,
+				Err(err) => {
+					warn!("Unable to parse {:?}! {}", &input, err);
+					return None
+				}
+			}
+		}
+		Err(err) => {
+			warn!("Unable to read {:?}! {}", &input, err);
+			return None
+		}
+	}
+}
 
-	toml::from_str(&input_str).unwrap_or_else(|err| {
-		error!("Unable to parse {:?}! {}", &input, err);
-		process::exit(exitcode::DATAERR);
-	})
+fn read_path(input_dir: &Path) -> Vec<PathBuf> {
+	match fs::read_dir(input_dir) {
+		Ok(dir) => {
+			dir
+				.filter_map(Result::ok)
+				.filter(|e| {
+					e.file_type()
+						.map(|t| t.is_file())
+						.unwrap_or(false)
+				})
+				.map(|e| e.path())
+				.collect::<Vec<_>>()
+		},
+		Err(err) => {
+			debug!("Unable to open {:?}! {}", input_dir, err);
+			vec![]
+		},
+	}
 }
 
 fn create_page(input: PathBuf, output: PathBuf, defaults: &Object, renderers: &Renderers) -> Option<Page> {
 	trace!("loading {:?}", &input);
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
-		error!("Unable to read {:?}! {}", &input, err);
+		warn!("Unable to read {:?}! {}", &input, err);
 		process::exit(exitcode::IOERR);
 	});
 
@@ -188,13 +221,12 @@ fn render_sass(input: String) -> Result<String, Box<grass::Error>> {
 }
 
 fn render_liquid(raw_template: &str, page: &Page, site: &Site) -> Result<String, liquid::Error> {
-	let parsed_template = ParserBuilder::with_stdlib()
+	ParserBuilder::with_stdlib()
 		.build()?
-		.parse(raw_template)?;
-
-	parsed_template.render(&liquid::object!({
-		"site": site,
-		"page": page,
+		.parse(raw_template)?
+		.render(&liquid::object!({
+			"site": site,
+			"page": page,
 	}))
 }
 
@@ -275,28 +307,20 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 	if builder.output.as_path().exists() {
 		fs::remove_dir_all(&builder.output)?;
 	}
+
 	fs::create_dir_all(&builder.output)?;
 
-	let input = fs::read_dir(&builder.input_dir).unwrap_or_else(|err| {
-		error!("Unable to open {:?}! {}", &builder.input_dir, err);
-		process::exit(exitcode::IOERR);
-	})
-		.filter_map(Result::ok)
-		.filter(|e| {
-			e.file_type().map(|t| t.is_file()).unwrap_or(false)
-		})
-		.map(|e| e.path())
-		.collect::<Vec<_>>();
-
 	let data = if builder.renderers.data {
-		input.iter()
+		read_path(&builder.input_dir.as_path().join(&builder.default_dirs.data_dir)).iter()
 			.filter(|p| p.extension() == Some(OsStr::new("toml")))
 			.par_bridge()
-			.map(|path| read_data(path.to_owned()))
+			.filter_map(|path| read_data(path.to_owned()))
 			.collect::<Vec<_>>()
 	} else {
 		vec![]
 	};
+
+	let input = read_path(&builder.input_dir);
 
 	let files = input.iter()
 		.filter_map(|path| path.file_name())
