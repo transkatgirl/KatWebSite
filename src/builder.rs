@@ -376,6 +376,8 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 					.unwrap_or(false)
 			})
 			.for_each(|p| {
+				trace!("copying {:?}...", p.path());
+
 				let output_file = builder.output.as_path().join(p.file_name());
 				fs::copy(p.path(), &output_file).unwrap_or_else(|err| {
 					error!("Unable to copy to {:?}! {}", &output_file, err);
