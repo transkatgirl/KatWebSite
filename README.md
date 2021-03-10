@@ -19,7 +19,7 @@ KatWebSite has a basic cli interface, which can be used to change the config fil
 KatWebSite's configuration is specified in the `config.toml` file by default. An example file containing all the configuration options (along with default values if they exist) can be found in `example.toml`. To prevent partial breakage when upgrading/downgrading, KatWebSite will fail to parse the configuration if unknown values are specified.
 
 #### HTTP server
-KatWebSite comes with a built-in HTTP(S) server that is robust and performant enough that it can be exposed directly to the public facing internet, if desired. It supports HTTP/2, has a secure TLS stack, has on-the-fly Gzip / Brotli compression, and can easily be configured through the config file. However, this server has a fairly minimal feature set, and more complex sites may be better off putting it behind a reverse proxy, or disabling it entirely.
+KatWebSite comes with a built-in HTTP(S) server that is robust and performant enough that it can be exposed directly to the public facing internet, if desired. It supports HTTP/2, has a secure TLS stack, has on-the-fly Gzip / Brotli compression, and can easily be configured through the config file. However, this server has a fairly minimal feature set, and more complex sites may be better off putting it behind a reverse proxy or disabling it entirely.
 
 #### Site building
 KatWebSite's site builder tries to be flexible yet simple, and avoids forcing a rigid structure on you. Here's how it handles input files:
