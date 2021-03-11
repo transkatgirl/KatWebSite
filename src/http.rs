@@ -76,6 +76,12 @@ fn default_server_log_format() -> String {
 	"%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D".to_string()
 }
 
+fn handle_not_found() -> HttpResponse {
+	HttpResponse::NotFound()
+		.content_type("text/html; charset=utf-8")
+		.body(include_str!("404.html"))
+}
+
 fn handle_redirect(req: HttpRequest, status: web::Data<StatusCode>, dest: web::Data<String>) -> HttpResponse {
 	let mut dest = dest.to_string();
 	for (_, segment) in req.match_info().iter() {
@@ -183,7 +189,8 @@ pub fn run_http_server(is_tls: bool, server: &Server, headers: &Headers, vhosts:
 			.wrap(Logger::new(&log_format))
 			.wrap(default_headers)
 			.wrap(NormalizePath::new(TrailingSlash::MergeOnly))
-			.wrap(Compress::default());
+			.wrap(Compress::default())
+			.default_service(web::route().to(handle_not_found));
 
 		for vhost in &vhosts_copy {
 			app = match configure_vhost_scope(&vhost, is_tls) {
