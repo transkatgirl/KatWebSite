@@ -28,10 +28,11 @@ output = ".site/localhost"
 
 data = true
 # This loads TOML files from [builder.default_dirs.data_dir], and parses them into Liquid variables.
-# All data in the data directory is assumed to be TOML.
+# All data in the data directory is assumed to be TOML. An overview of TOML syntax is available at https://toml.io
 
 liquid = true
 # Enables per-file Liquid templating. KatWebSite uses a slightly expanded version of the Liquid standard library, which is provided by liquid-lib (https://docs.rs/liquid-lib/0.22.0/liquid_lib).
+# You can learn about Liquid and it's core standard library at https://shopify.github.io/liquid
 
 # The variables which can be accessed by Liquid templates are listed below.
 # site:
@@ -54,10 +55,12 @@ liquid = true
 sass = true
 # Compiles SASS files from [builder.input_dir] into CSS. 
 # KatWebSite uses Grass as the SASS compiler, which may lack some of the features that Dart SASS supports.
+# You can learn SASS syntax at https://sass-lang.com/guide
 
 markdown = true
 # Compiles Markdown files from [builder.input_dir] into HTML.
 # KatWebSite uses Comrak as the markdown compiler, which allows for both Comrak and GFM extensions to be used in input files.
+# You can learn Markdown syntax at https://commonmark.org/help, and learn about GFM extensions at https://guides.github.com/features/mastering-markdown/#GitHub-flavored-markdown
 
 sanitizer = true
 # Sanitize untrusted HTML files (or files which have been compiled into HTML).
@@ -126,9 +129,10 @@ file_dir = ".site/localhost"
 # If a virtual host is missing this configuration block, it will only be accessible over http.
 
 pemfiles = [
-	"ssl/localhost_cert.pem"
+	"ssl/localhost_cert.pem",
 	"ssl/localhost_key.pem"
 ]
+# This is used to specify TLS certificates and keys.
 # The contents of PEM files provided to the TLS handler are automatically detected. Because of this, you can specify as many pemfiles as you want.
 # PEM files will be loaded in the order you've specified, which may be useful for splitting a complex certificate chain into multiple files. If multiple private keys are found, only the first one specified will be used.
 # Certificates must be in x509 format, and keys must be in PKCS8 format.
