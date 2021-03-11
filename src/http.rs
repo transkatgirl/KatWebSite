@@ -127,7 +127,6 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 	let mut scope = web::scope("/")
 		.guard(guard::Host(String::from(&vhost.host)));
 
-	// https://github.com/rust-lang/rust/issues/53667
 	if let Some(Tls{ http_dest: Some(dest), ..}) = &vhost.tls {
 		if !is_tls {
 			return Some(scope.data(dest.to_owned()).default_service(web::to(handle_https_redirect)))
@@ -150,9 +149,6 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 		)
 	}
 
-	// Potentially useful future features:
-	// - https://github.com/actix/actix-web/issues/1718
-	// - https://github.com/actix/actix-web/issues/2000
 	for files in vhost.files.to_owned() {
 		let mount = match files.mount.as_ref() {
 			"/" => "",
