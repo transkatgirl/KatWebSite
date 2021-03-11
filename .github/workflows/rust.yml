@@ -50,7 +50,8 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: success()
         with:
-          path: target/**/katwebsite|
+          name: ${{ matrix.os }}-${{ matrix.rust }}
+          path: target/**/katwebsite
       - run: cargo test
   build-cross:
     name: Build on ${{ matrix.target }} (using cross)
@@ -77,4 +78,5 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: success()
         with:
+          name: cross-${{ matrix.target }}
           path: target/**/katwebsite
