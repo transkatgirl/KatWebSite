@@ -48,19 +48,19 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - run: cargo build --release
       - uses: actions/upload-artifact@v2
-        if: success()
+        if: success() && matrix.os != ubuntu-latest
         with:
           name: ${{ matrix.os }}-${{ matrix.rust }}
           path: target/**/katwebsite
       - run: cargo test
   build-cross:
-    name: Build on ${{ matrix.target }} (using cross)
+    name: Build on ${{ matrix.target }} using cross
     runs-on: ubuntu-latest
     strategy:
       matrix:
         target:
-          - aarch64-unknown-linux-musl
-          - x86_64-unknown-linux-musl
+          - aarch64
+          - x86_64
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -68,15 +68,15 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          target: ${{ matrix.target}}
+          target: ${{ matrix.target}}-unknown-linux-musl
       - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
           command: build
-          args: --target ${{ matrix.target}} --release
+          args: --target ${{ matrix.target}}-unknown-linux-musl --release
       - uses: actions/upload-artifact@v2
         if: success()
         with:
-          name: cross-${{ matrix.target }}
+          name: ubuntu-latest-stable-${{ matrix.target }}
           path: target/**/katwebsite
