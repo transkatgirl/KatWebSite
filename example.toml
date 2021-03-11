@@ -28,7 +28,7 @@ output = ".site/localhost"
 
 data = true
 # This loads TOML files from [builder.default_dirs.data_dir], and parses them into Liquid variables.
-# All data in the data directory is assumed to be TOML. An overview of TOML syntax is available at https://toml.io
+# All data in the data directory is assumed to be TOML, and an overview of TOML syntax is available at https://toml.io
 
 liquid = true
 # Enables per-file Liquid templating. KatWebSite uses a slightly expanded version of the Liquid standard library, which is provided by liquid-lib (https://docs.rs/liquid-lib/0.22.0/liquid_lib).
@@ -68,7 +68,7 @@ sanitizer = true
 
 layout = true
 # Apply Liquid layouts, specified by the "layout" frontmatter variable, to files from [builder.input_dir].
-# This has access to the same standard library and variables used by ordinary Liquid templates, with the exception of [Page].content being rendered instead of unprocessed.
+# This has access to the same standard library and variables used by ordinary Liquid templates, with the exception of [type: Page].content being rendered instead of unprocessed.
 
 # Note that layouts can be used even if per-file templating is disabled. However, if per-file templating is disabled, frontmatter will not be parsed or removed, and {% include %} blocks will not work.
 
