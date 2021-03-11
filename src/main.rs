@@ -2,15 +2,15 @@
 
 use clap::Clap;
 use futures::try_join;
-use log::{trace, warn, debug, error, info};
+use log::{debug, error, info, trace, warn};
 use serde_derive::Deserialize;
-use std::{process, fs, path::PathBuf, env};
+use std::{env, fs, path::PathBuf, process};
 
-mod http;
 mod builder;
+mod http;
 
 /// A minimal static site generator and web server.
-#[derive(Clap,Debug)]
+#[derive(Clap, Debug)]
 #[clap(version = "0.1.0")]
 struct Opts {
 	/// Specifies the configuration file to load.
@@ -26,8 +26,7 @@ struct Opts {
 	verbose: i32,
 }
 
-
-#[derive(Deserialize,Clone,Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 struct Config {
 	#[serde(default)]
@@ -57,10 +56,11 @@ async fn main() {
 	};
 
 	flexi_logger::Logger::with_env_or_str(logstr)
-		.start().unwrap_or_else(|err| {
+		.start()
+		.unwrap_or_else(|err| {
 			eprintln!("Unable to start logger! {}", err);
 			process::exit(exitcode::UNAVAILABLE);
-	});
+		});
 
 	trace!("started logger with default RUST_LOG set to {:?}", logstr);
 
@@ -93,14 +93,16 @@ async fn main() {
 		})
 	}
 
-	let http_server = http::run_http_server(false, &config.server, &config.headers, &config.vhost).unwrap_or_else(|err| {
-		error!("Unable to configure HTTP server! {}", err);
-		process::exit(exitcode::CONFIG);
-	});
-	let https_server = http::run_http_server(true, &config.server, &config.headers, &config.vhost).unwrap_or_else(|err| {
-		error!("Unable to configure HTTPS server! {}", err);
-		process::exit(exitcode::CONFIG);
-	});
+	let http_server = http::run_http_server(false, &config.server, &config.headers, &config.vhost)
+		.unwrap_or_else(|err| {
+			error!("Unable to configure HTTP server! {}", err);
+			process::exit(exitcode::CONFIG);
+		});
+	let https_server = http::run_http_server(true, &config.server, &config.headers, &config.vhost)
+		.unwrap_or_else(|err| {
+			error!("Unable to configure HTTPS server! {}", err);
+			process::exit(exitcode::CONFIG);
+		});
 	try_join!(http_server, https_server).unwrap_or_else(|err| {
 		error!("Unable to start server! {}", err);
 		process::exit(exitcode::OSERR);

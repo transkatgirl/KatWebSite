@@ -3,27 +3,37 @@
 use comrak::ComrakOptions;
 use extract_frontmatter::Extractor;
 use grass::{Options, OutputStyle};
-use liquid::{ParserBuilder, Object, model::Value, partials::{LazyCompiler, InMemorySource}};
-use log::{trace, warn, debug, error, info};
+use liquid::{
+	model::Value,
+	partials::{InMemorySource, LazyCompiler},
+	Object, ParserBuilder,
+};
+use log::{debug, error, info, trace, warn};
 use rayon::prelude::*;
-use serde_derive::{Serialize, Deserialize};
-use std::{process, fs, path::{Path, PathBuf}, error::Error, boxed::Box};
+use serde_derive::{Deserialize, Serialize};
+use std::{
+	boxed::Box,
+	error::Error,
+	fs,
+	path::{Path, PathBuf},
+	process,
+};
 
-#[derive(Serialize,Clone,Debug)]
+#[derive(Serialize, Clone, Debug)]
 struct Site {
 	pages: Vec<Page>,
 	files: Vec<PathBuf>,
 	data: Vec<Object>,
 }
 
-#[derive(Serialize,Clone,Debug)]
+#[derive(Serialize, Clone, Debug)]
 struct Page {
 	path: PathBuf,
 	data: Object,
 	content: String,
 }
 
-#[derive(Deserialize,Clone,Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Builder {
 	pub input_dir: PathBuf,
@@ -39,7 +49,7 @@ pub struct Builder {
 	pub default_vars: Object,
 }
 
-#[derive(Deserialize,Clone,Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Dirs {
 	#[serde(default = "default_data_dir")]
@@ -65,14 +75,16 @@ fn default_include_dir() -> PathBuf {
 }
 
 impl Default for Dirs {
-	fn default() -> Self {  Dirs {
-		data_dir: default_data_dir(),
-		layout_dir: default_layout_dir(),
-		include_dir: default_include_dir(),
-	}}
+	fn default() -> Self {
+		Dirs {
+			data_dir: default_data_dir(),
+			layout_dir: default_layout_dir(),
+			include_dir: default_include_dir(),
+		}
+	}
 }
 
-#[derive(Deserialize,Clone,Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Renderers {
 	#[serde(default)]
@@ -95,29 +107,29 @@ pub struct Renderers {
 }
 
 impl Default for Renderers {
-	fn default() -> Self { Renderers {
-		data: true,
-		liquid: true,
-		sass: true,
-		markdown: true,
-		sanitizer: false,
-		layout: true,
-	}}
+	fn default() -> Self {
+		Renderers {
+			data: true,
+			liquid: true,
+			sass: true,
+			markdown: true,
+			sanitizer: false,
+			layout: true,
+		}
+	}
 }
 
 fn read_data(input: PathBuf) -> Option<Object> {
 	debug!("loading {:?}", &input);
 
 	match fs::read_to_string(&input) {
-		Ok(text) => {
-			match toml::from_str(&text) {
-				Ok(obj) => obj,
-				Err(err) => {
-					warn!("Unable to parse {:?}! {}", &input, err);
-					None
-				}
+		Ok(text) => match toml::from_str(&text) {
+			Ok(obj) => obj,
+			Err(err) => {
+				warn!("Unable to parse {:?}! {}", &input, err);
+				None
 			}
-		}
+		},
 		Err(err) => {
 			warn!("Unable to read {:?}! {}", &input, err);
 			None
@@ -127,21 +139,15 @@ fn read_data(input: PathBuf) -> Option<Object> {
 
 fn read_path(input_dir: &Path) -> Vec<PathBuf> {
 	match fs::read_dir(input_dir) {
-		Ok(dir) => {
-			dir
-				.filter_map(Result::ok)
-				.filter(|e| {
-					e.file_type()
-						.map(|t| t.is_file())
-						.unwrap_or(false)
-				})
-				.map(|e| e.path())
-				.collect::<Vec<_>>()
-		},
+		Ok(dir) => dir
+			.filter_map(Result::ok)
+			.filter(|e| e.file_type().map(|t| t.is_file()).unwrap_or(false))
+			.map(|e| e.path())
+			.collect::<Vec<_>>(),
 		Err(err) => {
 			debug!("Unable to open {:?}! {}", input_dir, err);
 			vec![]
-		},
+		}
 	}
 }
 
@@ -160,7 +166,7 @@ fn create_page(input: PathBuf, defaults: &Object, renderers: &Renderers) -> Opti
 	};
 
 	if !renderers.liquid {
-		return Some(page)
+		return Some(page);
 	}
 
 	let mut extractor = Extractor::new(&page.content);
@@ -170,13 +176,14 @@ fn create_page(input: PathBuf, defaults: &Object, renderers: &Renderers) -> Opti
 	let content = extractor.remove();
 	if content.is_empty() {
 		debug!("{:?} does not contain frontmatter", &input);
-		return None
+		return None;
 	}
 
-	page.data.extend(toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
-		warn!("Unable to parse {:?}'s frontmatter! {}", &input, err);
-		Object::new()
-	}));
+	page.data
+		.extend(toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
+			warn!("Unable to parse {:?}'s frontmatter! {}", &input, err);
+			Object::new()
+		}));
 
 	page.content = content.to_owned();
 
@@ -204,24 +211,33 @@ fn render_markdown(input: &str, renderers: &Renderers) -> String {
 }
 
 fn render_sass(input: String) -> Result<String, Box<grass::Error>> {
-	let options = Options::default()
-		.style(OutputStyle::Compressed);
+	let options = Options::default().style(OutputStyle::Compressed);
 
 	grass::from_string(input, &options)
 }
 
-fn render_liquid(raw_template: &str, page: &Page, site: &Site, partials: InMemorySource) -> Result<String, liquid::Error> {
+fn render_liquid(
+	raw_template: &str,
+	page: &Page,
+	site: &Site,
+	partials: InMemorySource,
+) -> Result<String, liquid::Error> {
 	ParserBuilder::with_stdlib()
 		.partials(LazyCompiler::new(partials))
 		.build()?
 		.parse(raw_template)?
 		.render(&liquid::object!({
-			"site": site,
-			"page": page,
-	}))
+				"site": site,
+				"page": page,
+		}))
 }
 
-fn build_site_page(mut page: Page, site: Site, renderers: &Renderers, partials: InMemorySource) -> Page {
+fn build_site_page(
+	mut page: Page,
+	site: Site,
+	renderers: &Renderers,
+	partials: InMemorySource,
+) -> Page {
 	if renderers.liquid {
 		debug!("building {:?}", &page.path);
 
@@ -236,7 +252,7 @@ fn build_site_page(mut page: Page, site: Site, renderers: &Renderers, partials: 
 			trace!("generating {:?}", &page.path);
 			page.content = render_markdown(&page.content, renderers);
 			page.path.set_extension("html");
-		},
+		}
 		Some("sass") if renderers.sass => {
 			trace!("generating {:?}", &page.path);
 			page.content = render_sass(page.content.to_owned()).unwrap_or_else(|err| {
@@ -244,24 +260,31 @@ fn build_site_page(mut page: Page, site: Site, renderers: &Renderers, partials: 
 				process::exit(exitcode::DATAERR);
 			});
 			page.path.set_extension("css");
-		},
+		}
 		_ => (),
 	}
 
 	page
 }
 
-fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_dir: &Path, dirs: &Dirs, partials: InMemorySource) -> Page {
+fn complete_site_page(
+	mut page: Page,
+	site: Site,
+	renderers: &Renderers,
+	input_dir: &Path,
+	dirs: &Dirs,
+	partials: InMemorySource,
+) -> Page {
 	match page.path.as_path().extension().unwrap_or_default().to_str() {
 		Some("html") if renderers.sanitizer => {
 			trace!("sanitizing {:?}", &page.path);
 			page.content = ammonia::clean(&page.content);
-		},
+		}
 		_ => (),
 	}
 
 	if !renderers.layout {
-		return page
+		return page;
 	}
 
 	if let Some(Value::Scalar(template)) = page.data.get("layout") {
@@ -277,13 +300,18 @@ fn complete_site_page(mut page: Page, site: Site, renderers: &Renderers, input_d
 					.unwrap_or_else(|err| {
 						error!("Unable to build layout for {:?}! {}", &page.path, err);
 						process::exit(exitcode::DATAERR);
-				});
+					});
 
-				match template_path.as_path().extension().unwrap_or_default().to_str() {
+				match template_path
+					.as_path()
+					.extension()
+					.unwrap_or_default()
+					.to_str()
+				{
 					Some("") | None => true,
 					Some(ext) => page.path.set_extension(ext),
 				};
-			},
+			}
 			Err(err) => {
 				warn!("Unable to load {:?}! {}", &template_path, err);
 			}
@@ -302,55 +330,87 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 
 	fs::create_dir_all(&builder.output)?;
 
-
 	let mut partials = InMemorySource::new();
 	if builder.renderers.liquid {
-		for file in read_path(&builder.input_dir.as_path().join(&builder.default_dirs.include_dir)) {
+		for file in read_path(
+			&builder
+				.input_dir
+				.as_path()
+				.join(&builder.default_dirs.include_dir),
+		) {
 			debug!("loading {:?}", &file);
 			partials.add(
-				file.file_stem().unwrap_or_default().to_str().unwrap_or_default(),
+				file.file_stem()
+					.unwrap_or_default()
+					.to_str()
+					.unwrap_or_default(),
 				fs::read_to_string(&file).unwrap_or_else(|err| {
 					warn!("Unable to read {:?}! {}", &file, err);
 					String::new()
-				})
+				}),
 			);
 		}
 	}
 
-
 	let data = if builder.renderers.data {
-		read_path(&builder.input_dir.as_path().join(&builder.default_dirs.data_dir)).iter()
-			.par_bridge()
-			.filter_map(|path| read_data(path.to_owned()))
-			.collect::<Vec<_>>()
+		read_path(
+			&builder
+				.input_dir
+				.as_path()
+				.join(&builder.default_dirs.data_dir),
+		)
+		.iter()
+		.par_bridge()
+		.filter_map(|path| read_data(path.to_owned()))
+		.collect::<Vec<_>>()
 	} else {
 		vec![]
 	};
 
 	let input = read_path(&builder.input_dir);
 
-	let files = input.iter()
+	let files = input
+		.iter()
 		.filter_map(|path| path.file_name())
 		.map(PathBuf::from)
 		.collect::<Vec<_>>();
 
-	let pages = input.iter()
+	let pages = input
+		.iter()
 		.par_bridge()
 		.filter_map(|path| create_page(path.to_owned(), &builder.default_vars, &builder.renderers))
 		.collect::<Vec<_>>();
 
-	let mut site = Site {
-		pages,
-		files,
-		data,
-	};
+	let mut site = Site { pages, files, data };
 
-	site.pages = site.pages.iter().par_bridge()
-		.map(|page| build_site_page(page.to_owned(), site.to_owned(), &builder.renderers, partials.to_owned()))
+	site.pages = site
+		.pages
+		.iter()
+		.par_bridge()
+		.map(|page| {
+			build_site_page(
+				page.to_owned(),
+				site.to_owned(),
+				&builder.renderers,
+				partials.to_owned(),
+			)
+		})
 		.collect::<Vec<_>>();
 
-	site.pages = site.pages.iter().par_bridge()
-		.map(|page| complete_site_page(page.to_owned(), site.to_owned(), &builder.renderers, &builder.input_dir, &builder.default_dirs, partials.to_owned()))
+	site.pages = site
+		.pages
+		.iter()
+		.par_bridge()
+		.map(|page| {
+			complete_site_page(
+				page.to_owned(),
+				site.to_owned(),
+				&builder.renderers,
+				&builder.input_dir,
+				&builder.default_dirs,
+				partials.to_owned(),
+			)
+		})
 		.collect::<Vec<_>>();
 
 	site.pages.iter().par_bridge().for_each(|page| {
@@ -363,13 +423,8 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 	});
 
 	if let Ok(dir) = fs::read_dir(&builder.input_dir) {
-		dir
-			.filter_map(Result::ok)
-			.filter(|e| {
-				e.file_type()
-					.map(|t| t.is_symlink())
-					.unwrap_or(false)
-			})
+		dir.filter_map(Result::ok)
+			.filter(|e| e.file_type().map(|t| t.is_symlink()).unwrap_or(false))
 			.for_each(|p| {
 				trace!("symlinking {:?}...", p.path());
 
@@ -384,9 +439,11 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 			});
 	}
 
-	site.files.iter()
+	site.files
+		.iter()
 		.filter(|p| !builder.output.as_path().join(p).exists())
-		.par_bridge().for_each(|p| {
+		.par_bridge()
+		.for_each(|p| {
 			let input_file = builder.input_dir.as_path().join(p);
 			let output_file = builder.output.as_path().join(p);
 

@@ -1,13 +1,24 @@
 #![warn(clippy::all)]
 
-use actix_web::{web, guard, http::{header, StatusCode}, middleware::{Compress, Logger, DefaultHeaders, NormalizePath, TrailingSlash}, App, Scope, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{
+	guard,
+	http::{header, StatusCode},
+	middleware::{Compress, DefaultHeaders, Logger, NormalizePath, TrailingSlash},
+	web, App, HttpRequest, HttpResponse, HttpServer, Scope,
+};
 use futures::future::Either;
-use log::{trace, debug, info};
-use rustls::{NoClientAuth, ServerConfig, ResolvesServerCertUsingSNI, sign, sign::CertifiedKey, PrivateKey, Certificate};
+use log::{debug, info, trace};
+use rustls::{
+	sign, sign::CertifiedKey, Certificate, NoClientAuth, PrivateKey, ResolvesServerCertUsingSNI,
+	ServerConfig,
+};
 use serde_derive::Deserialize;
-use std::{iter, fs::File, default::Default, collections::BTreeMap, net::SocketAddr, path::PathBuf, io::BufReader, sync::Arc, error::Error, boxed::Box, future, future::Future};
+use std::{
+	boxed::Box, collections::BTreeMap, default::Default, error::Error, fs::File, future,
+	future::Future, io::BufReader, iter, net::SocketAddr, path::PathBuf, sync::Arc,
+};
 
-#[derive(Deserialize,Clone,Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Vhost {
 	pub host: String,
@@ -21,7 +32,7 @@ pub struct Vhost {
 	pub tls: Option<Tls>,
 }
 
-#[derive(Deserialize,Clone,Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Files {
 	#[serde(default)]
@@ -30,7 +41,7 @@ pub struct Files {
 	pub file_dir: PathBuf,
 }
 
-#[derive(Deserialize,Clone,Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Redir {
 	#[serde(default)]
@@ -42,7 +53,7 @@ pub struct Redir {
 	pub permanent: bool,
 }
 
-#[derive(Deserialize,Clone,Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Tls {
 	pub pemfiles: Vec<PathBuf>,
@@ -51,7 +62,7 @@ pub struct Tls {
 
 pub type Headers = BTreeMap<String, String>;
 
-#[derive(Deserialize,Clone,Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Server {
 	#[serde(default)]
@@ -65,11 +76,13 @@ pub struct Server {
 }
 
 impl Default for Server {
-	fn default() -> Self { Server {
-		http_bind: vec![],
-		tls_bind: vec![],
-		log_format: default_server_log_format()
-	}}
+	fn default() -> Self {
+		Server {
+			http_bind: vec![],
+			tls_bind: vec![],
+			log_format: default_server_log_format(),
+		}
+	}
 }
 
 fn default_server_log_format() -> String {
@@ -82,10 +95,14 @@ fn handle_not_found() -> HttpResponse {
 		.body(include_str!("404.html"))
 }
 
-fn handle_redirect(req: HttpRequest, status: web::Data<StatusCode>, dest: web::Data<String>) -> HttpResponse {
+fn handle_redirect(
+	req: HttpRequest,
+	status: web::Data<StatusCode>,
+	dest: web::Data<String>,
+) -> HttpResponse {
 	let mut dest = dest.to_string();
 	for (_, segment) in req.match_info().iter() {
-		dest = [&dest,"/",segment].concat()
+		dest = [&dest, "/", segment].concat()
 	}
 
 	HttpResponse::build(*status.as_ref())
@@ -121,15 +138,22 @@ fn create_certified_key(pemfiles: &[PathBuf]) -> Result<CertifiedKey, Box<dyn Er
 
 fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 	if is_tls && vhost.tls.is_none() {
-		return None
+		return None;
 	}
 
-	let mut scope = web::scope("/")
-		.guard(guard::Host(String::from(&vhost.host)));
+	let mut scope = web::scope("/").guard(guard::Host(String::from(&vhost.host)));
 
-	if let Some(Tls{ http_dest: Some(dest), ..}) = &vhost.tls {
+	if let Some(Tls {
+		http_dest: Some(dest),
+		..
+	}) = &vhost.tls
+	{
 		if !is_tls {
-			return Some(scope.data(dest.to_owned()).default_service(web::to(handle_https_redirect)))
+			return Some(
+				scope
+					.data(dest.to_owned())
+					.default_service(web::to(handle_https_redirect)),
+			);
 		}
 	}
 
@@ -144,8 +168,9 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 		};
 		scope = scope.service(
 			web::resource(target)
-				.data(status).data(redir.dest)
-				.to(handle_redirect)
+				.data(status)
+				.data(redir.dest)
+				.to(handle_redirect),
 		)
 	}
 
@@ -158,14 +183,19 @@ fn configure_vhost_scope(vhost: &Vhost, is_tls: bool) -> Option<Scope> {
 			actix_files::Files::new(mount, &files.file_dir)
 				.index_file("index.html")
 				.prefer_utf8(true)
-				.disable_content_disposition()
+				.disable_content_disposition(),
 		)
 	}
-	
+
 	Some(scope)
 }
 
-pub fn run_http_server(is_tls: bool, server: &Server, headers: &Headers, vhosts: &[Vhost]) -> Result<impl Future<Output = Result<(), std::io::Error>>, Box<dyn Error>> {
+pub fn run_http_server(
+	is_tls: bool,
+	server: &Server,
+	headers: &Headers,
+	vhosts: &[Vhost],
+) -> Result<impl Future<Output = Result<(), std::io::Error>>, Box<dyn Error>> {
 	let log_format = server.log_format.to_owned();
 	let vhosts_copy = vhosts.to_owned();
 	let headers_copy = headers.to_owned();
@@ -221,7 +251,7 @@ pub fn run_http_server(is_tls: bool, server: &Server, headers: &Headers, vhosts:
 			for addr in &server.tls_bind {
 				http_server = http_server.bind_rustls(addr, tlsconf.to_owned())?
 			}
-		},
+		}
 		false => {
 			if server.http_bind.is_empty() {
 				debug!("http_bind is empty, skipping http init");
@@ -232,9 +262,8 @@ pub fn run_http_server(is_tls: bool, server: &Server, headers: &Headers, vhosts:
 			for addr in &server.http_bind {
 				http_server = http_server.bind(addr)?
 			}
-		},
+		}
 	}
 
 	Ok(Either::Right(http_server.run()))
 }
-

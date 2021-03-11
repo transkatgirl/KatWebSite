@@ -6,7 +6,7 @@ repository = "https://github.com/katattakd/KatWebSite"
 authors = ["Kat <katattakd@pm.me>"]
 description = "A minimal static site generator and web server."
 categories = ["network-programming", "web-programming::http-server", "web-programming::websocket", "command-line-utilities", "text-processing"]
-edition = '2018'
+edition = '2018' # Note: Update to edition 2021 when it's ready. https://blog.rust-lang.org/inside-rust/2021/03/04/planning-rust-2021.html
 
 [dependencies]
 ### CLI argument parsing [main.rs]
