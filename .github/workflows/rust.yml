@@ -14,15 +14,18 @@ jobs:
   lint:
     name: Lint with Clippy on Rust nightly
     runs-on: ubuntu-latest
-    env:
-      RUSTFLAGS: -Dwarnings
     steps:
       - uses: actions/checkout@v2
-      - uses: hecrj/setup-rust-action@v1
+      - uses: actions-rs/toolchain@v1
         with:
-          rust-version: nightly
+          profile: minimal
+          override: true
           components: clippy
-      - run: cargo clippy
+      - uses: Swatinem/rust-cache@v1
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
   build:
     name: Build & Test with Rust ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -36,15 +39,18 @@ jobs:
         - { rust: nightly,           os: ubuntu-latest }
     steps:
       - uses: actions/checkout@v2
-      - uses: hecrj/setup-rust-action@v1
+      - uses: actions-rs/toolchain@v1
         with:
-          rust-version: ${{ matrix.rust }}
+          toolchain: ${{ matrix.rust }}
+          profile: minimal
+          override: true
+      - uses: Swatinem/rust-cache@v1
       - run: cargo build --release
-      - run: cargo test --release
       - uses: actions/upload-artifact@v2
         if: success()
         with:
-          path: target/**/katwebsite
+          path: target/**/katwebsite|
+      - run: cargo test
   build-cross:
     name: Build on ${{ matrix.target }} (using cross)
     runs-on: ubuntu-latest
@@ -55,9 +61,17 @@ jobs:
           - x86_64-unknown-linux-musl
     steps:
       - uses: actions/checkout@v2
-      - uses: hecrj/setup-rust-action@v1
-      - run: cargo install cross
-      - run: cross build --target=${{ matrix.target }} --release
+      - uses: actions-rs/toolchain@v1
+        with:
+          target: ${{ matrix.target}}
+          profile: minimal
+          override: true
+      - uses: Swatinem/rust-cache@v1
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --target ${{ matrix.target}}
       - uses: actions/upload-artifact@v2
         if: success()
         with:
