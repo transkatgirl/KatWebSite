@@ -2,7 +2,12 @@
 A minimal static site generator and web server.
 
 ## Installation
-KatWebSite is currently beta software and must be compiled from source. Pre-compiled builds may be available in the future.
+KatWebSite is currently unfinished beta software, and does not offer stable releases at this time.
+
+### Downloading CI builds
+KatWebSite uses GitHub Actions to test and compile every commit on different operating systems and CPU architectures.
+
+The [Rust workflow](https://github.com/katattakd/KatWebSite/actions/workflows/rust.yml?query=is%3Asuccess) contains the compiled binaries as artifacts, which can be downloaded for any commit within the past 30 days. Due to a limitation of GitHub Actions, downloading artifacts currently requires an account.
 
 ### Building from source
 1. Install a [Rust compiler](https://www.rust-lang.org/learn/get-started) to your device.
