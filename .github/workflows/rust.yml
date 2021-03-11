@@ -28,7 +28,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
   build:
-    name: Build & Test with Rust ${{ matrix.rust }} on ${{ matrix.os }}
+    name: Build & Test on ${{ matrix.os }}-${{ matrix.rust }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
