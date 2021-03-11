@@ -9,13 +9,6 @@ use rayon::prelude::*;
 use serde_derive::{Serialize, Deserialize};
 use std::{process, fs, path::{Path, PathBuf}, error::Error, boxed::Box};
 
-// TODO:
-// - implement more of jeykll liquid and/or katsite specific liquid features
-// - possible feature: implement file minifiers (html, css, js)
-// - possible feature: implement media optimization
-
-// NOTE: KatSite code may be useful as a reference
-
 #[derive(Serialize,Clone,Debug)]
 struct Site {
 	pages: Vec<Page>,

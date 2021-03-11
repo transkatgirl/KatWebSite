@@ -2,11 +2,11 @@
 host = "localhost"
 
 [[vhost.files]]
-file_dir = "/tmp/localhost_test"
+file_dir = "html/_site"
 
 [[builder]]
-input_dir = "html/localhost_test"
-output = "/tmp/localhost_test"
+input_dir = "html"
+output = "html/_site"
 
 [server]
 http_bind = ["[::1]:8080", "127.0.0.1:8080"]

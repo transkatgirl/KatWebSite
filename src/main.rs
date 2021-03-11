@@ -4,7 +4,7 @@ use clap::Clap;
 use futures::try_join;
 use log::{trace, warn, debug, error, info};
 use serde_derive::Deserialize;
-use std::{process, fs};
+use std::{process, fs, path::PathBuf, env};
 
 mod http;
 mod builder;
@@ -66,7 +66,7 @@ async fn main() {
 
 	info!("Loading configuration");
 
-	debug!("parsing {} as toml configuration", opts.config);
+	debug!("parsing {:?} as toml configuration", opts.config);
 	let config_data = fs::read_to_string(&opts.config).unwrap_or_else(|err| {
 		error!("Unable to read config file! {}", err);
 		process::exit(exitcode::NOINPUT);
@@ -75,6 +75,13 @@ async fn main() {
 		error!("Unable to parse config file! {}", err);
 		process::exit(exitcode::CONFIG);
 	});
+
+	if let Some(config_path) = PathBuf::from(&opts.config).parent() {
+		trace!("setting working directory to {:?}", &config_path);
+		env::set_current_dir(config_path).unwrap_or_else(|err| {
+			trace!("Unable to change working directory! {}", err);
+		})
+	}
 
 	if config.builder.is_empty() {
 		debug!("no page builders specified, skipping builder init");
