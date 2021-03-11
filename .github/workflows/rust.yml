@@ -48,7 +48,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - run: cargo build --release
       - uses: actions/upload-artifact@v2
-        if: success() && matrix.os != "ubuntu-latest"
+        if: ${{ success() && matrix.os != 'ubuntu-latest' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.rust }}
           path: target/**/katwebsite*
