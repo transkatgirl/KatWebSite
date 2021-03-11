@@ -48,10 +48,15 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - run: cargo build --release
       - uses: actions/upload-artifact@v2
-        if: ${{ success() && matrix.os != 'ubuntu-latest' }}
+        if: ${{ success() && matrix.os == 'macos-latest' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.rust }}
-          path: target/**/katwebsite*
+          path: target/release/katwebsite
+      - uses: actions/upload-artifact@v2
+        if: ${{ success() && matrix.os == 'windows-latest' }}
+        with:
+          name: ${{ matrix.os }}-${{ matrix.rust }}
+          path: target/releas/katwebsite.exe
       - run: cargo test
   build-cross:
     name: Build on ${{ matrix.target }} using cross
@@ -79,4 +84,4 @@ jobs:
         if: success()
         with:
           name: ubuntu-latest-stable-${{ matrix.target }}
-          path: target/**/katwebsite
+          path: target/**/release/katwebsite
