@@ -56,7 +56,7 @@ jobs:
         if: ${{ success() && matrix.os == 'windows-latest' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.rust }}
-          path: target/releas/katwebsite.exe
+          path: target/release/katwebsite.exe
       - run: cargo test
   build-cross:
     name: Build on ${{ matrix.target }} using cross
@@ -84,4 +84,4 @@ jobs:
         if: success()
         with:
           name: ubuntu-latest-stable-${{ matrix.target }}
-          path: target/**/release/katwebsite
+          path: target/${{ matrix.target}}-unknown-linux-musl/release/katwebsite
