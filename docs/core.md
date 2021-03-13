@@ -24,6 +24,8 @@ If the order a config option is loaded in is not explicitly specified in this do
 
 Directories in the config file are all relative to the program's working directory, unless otherwise specified.
 
+---
+
 ### Site generator configuration
 KatWebSite allows you to turn various input files into a generated website through Builders. You can specify as many builders as needed through `[[builder]]` blocks in the configuration file, and Builders will always be run to completion before the web server is started.
 
@@ -105,6 +107,8 @@ An example of a `[builder.default_vars]` block is shown below:
 title = "My page"
 ```
 
+---
+
 ### Web server configuration
 KatWebSite allows you to create different routing configurations depending on the HTTP `Host` header using "virtual hosts". You can specify as many virtual hosts as needed through `[[vhost]]` blocks in the configuration file, and virtual hosts will always be initialized in the order they're specified in.
 
@@ -169,12 +173,51 @@ file_dir = "html/static"
 ```
 
 Additional Notes:
-- File handlers detect MIME type purely based on file extension, assumes all text files are UTF-8, and defaults to `application/octet-stream` if the file extension could not be recognized. This may cause issues for files which have incorrect and/or rarely used extensions.
+- File handlers detect MIME type purely based on file extension, assume all text files are UTF-8, and defaults to `application/octet-stream` if the file extension could not be recognized. This may cause issues for files which have incorrect and/or rarely used extensions.
 - When serving a directory, the file handler will attempt to find an `index.html` file to serve. If no such file is present, the handler will return a 404 instead of generating a list of files in the directory.
 - Only the GET and HEAD HTTP methods are supported for file handler requests.
 - Subdirectory roots can be retrieved by clients using either the `/dir` or `/dir/` URL segments. The server will not attempt to enforce a "correct" way to retrieve subdirectories through the use of redirects.
 
-#### Global HTTP configuration
+#### Configuring TLS
+TLS certificates are configured on a per-vhost bases through the use of `[vhost.tls]` blocks. If this block is omitted, the virtual host will only be accessible over HTTP.
+
+Each `[vhost.tls]` block can contain up to two values:
+- `pemfiles` - A list of PEM files for the virtual host. The contents of them are automatically detected, you may specify as many of them as needed, and they will be loaded in the order specified.
+- `http_dest` - This specifies the destination for an automatic HTTP -> HTTPS redirect. If this is specified, all HTTP vhost requests will be redirected to `http_dest`. If this is omitted, HTTP vhost requests will be handled the same way as HTTPS vhost requests.
+
+An example of a `[vhost.tls]` block is shown below:
+
+```toml
+# Root [[vhost]] block omitted for clarity
+
+[vhost.tls]
+pemfiles = [
+	"ssl/localhost_cert.pem"
+	"ssl/localhost_key.pem"
+]
+http_dest = "https://localhost:8181"
+```
+
+Additional notes:
+- If multiple private keys are specified, only the first one found will be used.
+- Certificates must be in x509 format, and private keys must be in PKCS8 format.
+  - Private keys can be converted to PKCS8 using the following command: `openssl pkcs8 -topk8 -nocrypt -in input.pem -out output.pem`
+
+#### Setting default HTTP headers
+Although the web-server adds many useful HTTP headers to the response, the set of default headers is very minimal, and some users may wish to expand it. This can be done with the `[headers]` block.
+
+The `[headers]` block sets the default HTTP header values for *all* requests, and is specified as a series of key = value pairs. This block will only add headers to the response if they are not already present, it will not overwrite existing headers. The order HTTP headers are returned in may change between requests and should not be relied on.
+
+An example of a `[headers]` block is shown below:
+```toml
+[headers]
+server = "KatWebSite"
+```
+
+The best practices for which HTTP headers should be included in your response is out of the scope for this document.
+
+#### Global web server configuration
+
 
 ---
 
@@ -290,9 +333,3 @@ The SASS Renderer compiles SASS files into CSS, and only activates on files with
 
 #### HTML sanitizer Renderer
 The HTML sanitizer Renderer can be used to sanitize untrusted HTML in a very restrictive way. `Ammonia` is as the HTML sanitizer, which is based on the [Servo browser engine](https://servo.org). Therefore, the sanitizer should be very robust and suitable for user provided input.
-
----
-
-## Web server
-
-**TODO: Figure out which sections need to be written**
