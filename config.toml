@@ -1,12 +1,23 @@
-[[vhost]]
-host = "localhost"
+[[builder]]
+input_dir = "docs"
+output = "html/docs"
 
-[[vhost.files]]
-file_dir = "html/_site"
+[builder.renderers]
+markdown = true
 
 [[builder]]
 input_dir = "html"
 output = "html/_site"
+
+[[vhost]]
+host = "localhost"
+
+[[vhost.files]]
+mount = "/docs"
+file_dir = "html/docs"
+
+[[vhost.files]]
+file_dir = "html/_site"
 
 [server]
 http_bind = ["[::1]:8080", "127.0.0.1:8080"]

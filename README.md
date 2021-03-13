@@ -16,7 +16,7 @@ The [Rust workflow](https://github.com/katattakd/KatWebSite/actions/workflows/ru
    - The compiled output will be in either `target/release/katwebsite` or `target/debug/katwebsite`.
 
 ## Configuration / Usage
-A comprehensive documentation of KatWebSite's features and configuration can be found inside the [example.toml](https://github.com/katattakd/KatWebSite/blob/main/example.toml) file. It's highly recommended that you read this before attempting to use KatWebSite.
+A comprehensive documentation of KatWebSite's features and configuration can be found inside the [core.md](https://github.com/katattakd/KatWebSite/blob/main/docs/core.md) file. It's highly recommended that you read this before attempting to use KatWebSite.
 
 KatWebSite also has a basic CLI interface, which can be used to load different config files or change the logging verbosity. For a list of CLI flags, run `katsite --help`.
 

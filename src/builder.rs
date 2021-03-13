@@ -198,7 +198,7 @@ fn render_markdown(input: &str, renderers: &Renderers) -> String {
 	options.extension.tasklist = true;
 	options.extension.superscript = true;
 	if !renderers.sanitizer {
-		options.extension.header_ids = Some("user-content-".to_string());
+		options.extension.header_ids = Some("".to_string());
 		options.extension.footnotes = true;
 	}
 	options.extension.description_lists = true;
