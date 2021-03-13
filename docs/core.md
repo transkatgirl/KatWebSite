@@ -29,6 +29,8 @@ Directories in the config file are all relative to the program's working directo
 ### Site generator configuration
 KatWebSite allows you to turn various input files into a generated website through Builders. You can specify as many builders as needed through `[[builder]]` blocks in the configuration file, and Builders will always be run to completion before the web server is started.
 
+If you do not intend to use the site generator, specifying no `[[builder]]` blocks in the configuration will automatically disable it.
+
 Each `[[builder]]` block requires two values:
 - `input_dir` - The directory input files are loaded from.
 - `output` - The directory output files are written to.
@@ -192,7 +194,7 @@ An example of a `[vhost.tls]` block is shown below:
 
 [vhost.tls]
 pemfiles = [
-	"ssl/localhost_cert.pem"
+	"ssl/localhost_cert.pem",
 	"ssl/localhost_key.pem"
 ]
 http_dest = "https://localhost:8181"
@@ -217,7 +219,24 @@ server = "KatWebSite"
 The best practices for which HTTP headers should be included in your response is out of the scope for this document.
 
 #### Global web server configuration
+A `[server]` block must be specified in the configuration for the web server to start. If it is not specified, all `[[vhost]]` and `[headers]` blocks will be ignored.
 
+Each `[server]` block can contain up to three options:
+- `http_bind` - A list of all address:port pairs that the HTTP listener will attempt to bind to.
+- `tls_bind` - A list of all address:port pairs that the HTTPS listener will attempt to bind to.
+- `log_format` - The format used for request logs, has the same syntax as [actix-web's logger middleware](https://docs.rs/actix-web/3.3.2/actix_web/middleware/struct.Logger.html). Defaults to `%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D`.
+
+An example of a `[server]` block is shown below:
+```toml
+[server]
+http_bind = ["[::1]:8080", "127.0.0.1:8080"]
+tls_bind = ["[::1]:8181", "127.0.0.1:8181"]
+log_format = "%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D"
+```
+
+Additional info:
+- If neither `http_bind` or `tls_bind` are specified, the web server will not start.
+- The web server will automatically use on-the-fly brotli/gzip compression if the client supports it.
 
 ---
 
