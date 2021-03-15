@@ -181,7 +181,7 @@ Additional Notes:
 - Subdirectory roots can be retrieved by clients using either the `/dir` or `/dir/` URL segments. The server will not attempt to enforce a "correct" way to retrieve subdirectories through the use of redirects.
 
 #### Configuring TLS
-TLS certificates are configured on a per-vhost bases through the use of `[vhost.tls]` blocks. If this block is omitted, the virtual host will only be accessible over HTTP.
+TLS certificates are configured on a per-vhost basis through the use of `[vhost.tls]` blocks. If this block is omitted, the virtual host will only be accessible over HTTP.
 
 Each `[vhost.tls]` block can contain up to two values:
 - `pemfiles` - A list of PEM files for the virtual host. The contents of them are automatically detected, you may specify as many of them as needed, and they will be loaded in the order specified.
@@ -236,7 +236,12 @@ log_format = "%{Host}i %a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %D"
 
 Additional info:
 - If neither `http_bind` or `tls_bind` are specified, the web server will not start.
-- The web server will automatically use on-the-fly brotli/gzip compression if the client supports it.
+- The web server supports the following technologies:
+  - HTTP/1.1 & HTTP/2
+  - On-the-fly Gzip/Brotli compression
+  - Chunked transfer-encodinng
+  - Partial requests and content-type detection for file handlers
+  - A secure TLS 1.2 & 1.3 stack
 
 ---
 
@@ -287,7 +292,7 @@ The processing chain that Builders run is below:
 7. Page building (part 2)
    - The Site object, along with the Liquid includes, is used to finish building all the Pages inside the Site.
      1. If the HTML sanitizer is enabled and the Page contains HTML, the Page's HTML is sanitized.
-     2. If the Layout renderer is enabled and a `layout` Liquid variable is set, the specified Liquid layout is applied to the Page.
+     2. If the Layout renderer is enabled and a `layout` Liquid variable is set, the specified Liquid layout is loaded from `layout_dir` and applied to the Page.
 8. Page writing
    - All Page objects inside the Site are written to the Builder's `output` directory.
 9. File re-linking
@@ -300,7 +305,7 @@ The processing chain that Builders run is below:
 The Liquid Renderer allows Pages to use the [Liquid templating language](https://shopify.github.io/liquid/) to dynamically generate Page content at build time. This Renderer uses an expanded version of the Liquid standard library provided by [`liquid-lib`](https://docs.rs/liquid-lib/0.22.0/liquid_lib), to allow for extra functionality like `{% include %}` blocks.
 
 #### Frontmatter
-This Renderer also handles loading frontmatter variables from Pages. If the renderer is enabled, frontmatter is removed from input files, and the text inside that frontmatter is parsed as TOML and turned into Liquid variables.
+This Renderer also handles loading frontmatter variables from Pages. If the Liquid renderer is enabled, frontmatter is removed from input files, and the text inside that frontmatter is parsed as TOML and turned into Liquid variables.
 
 The beginning and end of frontmatter text is marked with `---`. An example of frontmatter above a Markdown document is shown below:
 
@@ -342,7 +347,7 @@ The rendering of a layout file is almost identical to the rendering of a Page, e
 ### File-type dependent Renderers
 Some Renderers may only activate on certain file types. During a segment of the build chain (see the [site generation overview](#overview) for a list of all segments), only one file-type dependent renderer can be run at a time.
 
-File types are detected purely based on file extension. If a file is not what it claims to be, the parser may throw an error, generate nonsensical output, or both.
+File types are detected purely based on file extension. If a file is not what it claims to be, the Renderer's parser may throw an error, generate nonsensical output, or both.
 
 #### Markdown Renderer
 The Markdown Renderer compiles Markdown files into HTML, and only activates on files with the `.md` extension. `Comrak` is used as the [CommonMark](https://commonmark.org/help/) renderer, with both [GFM and Comrak extensions](https://docs.rs/comrak/0.9.1/comrak/struct.ComrakExtensionOptions.html) enabled.
