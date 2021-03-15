@@ -26,7 +26,14 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+          args: --all-features"
+      - uses: actions/upload-artifact@v2
+        if: success()
+        with:
+          name: additional-files
+          path: |
+            docs
+            template
   build:
     name: Build & Test on ${{ matrix.os }}-${{ matrix.rust }}
     runs-on: ${{ matrix.os }}
@@ -51,18 +58,12 @@ jobs:
         if: ${{ success() && matrix.os == 'macos-latest' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.rust }}
-          path: |
-            docs
-            template
-            target/release/katwebsite
+          path: target/release/katwebsite
       - uses: actions/upload-artifact@v2
         if: ${{ success() && matrix.os == 'windows-latest' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.rust }}
-          path: |
-            docs
-            template
-            target/release/katwebsite.exe
+          path: target/release/katwebsite.exe
       - run: cargo test
   build-cross:
     name: Build on ${{ matrix.target }} using cross
@@ -90,7 +91,4 @@ jobs:
         if: success()
         with:
           name: linux-latest-stable-${{ matrix.target }}
-          path: |
-            docs
-            template
-            target/${{ matrix.target}}-unknown-linux-musl/release/katwebsite
+          path: target/${{ matrix.target}}-unknown-linux-musl/release/katwebsite
