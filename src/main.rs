@@ -95,7 +95,7 @@ async fn main() {
 	}
 	for copier in &config.pre_copier {
 		copier::run_copier(copier).unwrap_or_else(|err| {
-			error!("Unable to run copier for {:?}! {}", copier.input_dirs, err);
+			error!("Unable to run copier for {:?}! {}", copier.input_dir, err);
 			process::exit(exitcode::IOERR);
 		});
 	}
@@ -107,7 +107,7 @@ async fn main() {
 	}
 	for copier in &config.copier {
 		copier::run_copier(copier).unwrap_or_else(|err| {
-			error!("Unable to run copier for {:?}! {}", copier.input_dirs, err);
+			error!("Unable to run copier for {:?}! {}", copier.input_dir, err);
 			process::exit(exitcode::IOERR);
 		});
 	}

@@ -134,10 +134,10 @@ title = "My page"
 ---
 
 ### Copier configuration
-KatWebSite allows you to create "dumb" Builders through the use of Copiers. However, [unlike Builders](#overview), Copiers *recursively* copy files from a set of paths to an output directory, and resolve symbolic links in the process of doing so.
+KatWebSite allows you to create "dumb" Builders through the use of Copiers. However, [unlike Builders](#overview), Copiers *recursively* copy files from an input directory to an output directory, do not remove the output directory, and resolve symbolic links in the process of doing so.
 
 Each `[[copier]]` block can have up to three options:
-- `input_dirs` - The files/directories to copy files from.
+- `input_dir` - The directory to copy files from.
 - `output` - The directory to copies files to.
 - `overwrite` - If existing files should be overwritten (true) or skipped (false). Defaults to false.
 
@@ -145,7 +145,7 @@ An example of a `[[copier]]` block is shown below:
 
 ```toml
 [[copier]]
-input_dirs = "data"
+input_dir = "data"
 output = "html/_data"
 overwrite = true
 ```
@@ -339,6 +339,8 @@ The processing chain that Builders run is below:
      1. If the HTML sanitizer is enabled and the Page contains HTML, the Page's HTML is sanitized.
      2. If the Layout renderer is enabled and a `layout` Liquid variable is set, the specified Liquid layout is loaded from `layout_dir` and applied to the Page.
 8. Page writing
+   - **If the Builder's `output` directory exists, all files are removed from it.**
+   - If the Builder's `output` directory does not exist, it is created.
    - All Page objects inside the Site are written to the Builder's `output` directory.
 9. File re-linking
    1. All soft symbolic links in the Builder's `input_dir` directory are found and turned into absolute paths.
