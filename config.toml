@@ -1,26 +1,16 @@
+[[pre_copier]]
+input_dir = "template"
+output = "html"
+
 [[builder]]
 input_dir = "html"
 output = "html/_site"
-
-[[builder]]
-input_dir = "docs"
-output = "html/_docs"
-
-[builder.renderers]
-markdown = true
 
 [[vhost]]
 host = "localhost"
 
 [[vhost.files]]
-mount = "/docs"
-file_dir = "html/_docs"
-
-[[vhost.files]]
 file_dir = "html/_site"
-
-
-
 
 [headers]
 server = "KatWebSite"
