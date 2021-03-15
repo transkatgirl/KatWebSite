@@ -32,7 +32,9 @@ jobs:
         with:
           name: additional-files
           path: |
-            docs
+            README.md
+            LICENSE
+            examples
             template
   build:
     name: Build & Test on ${{ matrix.os }}-${{ matrix.rust }}

@@ -1,3 +1,6 @@
+---
+title = "KatWebSite Core Docs"
+---
 # KatWebSite Core Docs
 This file is intended to provide complete documentation for the KatWebSite binary. However, it is not intended to be the entirety of KatWebSite's documentation. There will be additional files in the docs folder that document other components of KatWebSite, such as it's built-in input files.
 
@@ -349,7 +352,7 @@ The processing chain that Builders run is below:
     - Files that were found by the file scanning, but were ignored by the page creation, are hard symbolic linked into the Builder's `output` directory. If hard symbolic linking is not possible, the file is copied instead.
 
 ### Liquid templating
-The Liquid Renderer allows Pages to use the [Liquid templating language](https://shopify.github.io/liquid/) to dynamically generate Page content at build time. This Renderer uses an expanded version of the Liquid standard library provided by [`liquid-lib`](https://docs.rs/liquid-lib/0.22.0/liquid_lib), to allow for extra functionality like `{% include %}` blocks.
+The Liquid Renderer allows Pages to use the [Liquid templating language](https://shopify.github.io/liquid/) to dynamically generate Page content at build time. This Renderer uses an expanded version of the Liquid standard library provided by [`liquid-lib`](https://docs.rs/liquid-lib/0.22.0/liquid_lib), to allow for extra functionality like `{% raw %}{% include %}{% endraw %}` blocks.
 
 #### Frontmatter
 This Renderer also handles loading frontmatter variables from Pages. If the Liquid renderer is enabled, frontmatter is removed from input files, and the text inside that frontmatter is parsed as TOML and turned into Liquid variables.

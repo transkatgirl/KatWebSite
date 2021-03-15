@@ -1,3 +1,7 @@
+
+# just for messing around
+# todo: integrate this into the example site
+
 [[pre_copier]]
 input_dir = "template"
 output = "html"

@@ -1,0 +1,19 @@
+[[pre_copier]]
+input_dir = "../template"
+output = "html"
+
+[[builder]]
+input_dir = "html"
+output = "html/_site"
+
+[builder.default_vars]
+layout = "default.html"
+
+[[vhost]]
+host = "localhost"
+
+[[vhost.files]]
+file_dir = "html/_site"
+
+[server]
+http_bind = ["[::1]:8080", "127.0.0.1:8080"]

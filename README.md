@@ -15,8 +15,10 @@ The [Rust workflow](https://github.com/katattakd/KatWebSite/actions/workflows/ru
 3. Open a terminal inside the downloaded repository, and run `cargo build --release` (or without `--release` for a debug build).
    - The compiled output will be in either `target/release/katwebsite` or `target/debug/katwebsite`.
 
-## Configuration / Usage
-A comprehensive documentation of KatWebSite's features and configuration can be found inside the [core.md](https://github.com/katattakd/KatWebSite/blob/main/docs/core.md) file. It's highly recommended that you read this before attempting to use KatWebSite.
+## Running the demo page
+KatWebSite's demo page and documentation can be built and run by running `katwebsite -c examples/config.toml`. You can then access the page through http://localhost:8080.
 
-KatWebSite also has a basic CLI interface, which can be used to load different config files or change the logging verbosity. For a list of CLI flags, run `katsite --help`.
+Note: If you're downloading the binary artifacts, you will have to download the additional-files artifact and extract it into the same directory as KatWebSite before running the example page.
+
+It's highly recommended that you read the built-in documentation before attempting to use KatWebSite, even if you are already familiar with other static site generators / web servers.
 

@@ -25,7 +25,7 @@ pub fn run_copier(copier: &Copier) -> fs_extra::error::Result<u64> {
 			skip_exist: !copier.overwrite,
 			buffer_size: 64000, // ignored for copy_items
 			copy_inside: true,
-			content_only: false,
+			content_only: true,
 			depth: 0,
 		},
 	)

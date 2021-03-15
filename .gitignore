@@ -1,2 +1,5 @@
+/examples/html/_includes
+/examples/html/_layouts
+/examples/html/_site
 /target
 Cargo.lock
