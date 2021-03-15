@@ -1,6 +1,8 @@
 ---
 title = "KatWebSite Core Docs"
 ---
+[back to main page](/)
+
 # KatWebSite Core Docs
 This file is intended to provide complete documentation for the KatWebSite binary. However, it is not intended to be the entirety of KatWebSite's documentation. There will be additional files in the docs folder that document other components of KatWebSite, such as it's built-in input files.
 

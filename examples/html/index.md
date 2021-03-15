@@ -14,3 +14,5 @@ A list of missing / incomplete documentation is below:
 - Intro to KatWebSite Core
 - Intro to using the KatWebSite Site Template
 - KatWebSite Template Docs
+- Best Practices for building pages
+- Best Practices for serving pages

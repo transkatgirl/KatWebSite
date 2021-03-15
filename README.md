@@ -18,7 +18,7 @@ The [Rust workflow](https://github.com/katattakd/KatWebSite/actions/workflows/ru
 ## Running the demo page
 KatWebSite's demo page and documentation can be built and run by running `katwebsite -c examples/config.toml`. You can then access the page through http://localhost:8080.
 
-Note: If you're downloading the binary artifacts, you will have to download the additional-files artifact and extract it into the same directory as KatWebSite before running the example page.
+Note: If you're using the CI builds, you will have to download the additional-files artifact and extract it's contents into the *same directory as the KatWebSite binary* before attempting to run the demo page. All further documentation assumes this step has already been completed.
 
 It's highly recommended that you read the built-in documentation before attempting to use KatWebSite, even if you are already familiar with other static site generators / web servers.
 
