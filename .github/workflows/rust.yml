@@ -89,7 +89,7 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: success()
         with:
-          name: ubuntu-latest-stable-${{ matrix.target }}
+          name: linux-latest-stable-${{ matrix.target }}
           path: |
             docs
             template
