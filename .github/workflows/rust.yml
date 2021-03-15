@@ -51,12 +51,18 @@ jobs:
         if: ${{ success() && matrix.os == 'macos-latest' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.rust }}
-          path: target/release/katwebsite
+          path: |
+            docs
+            template
+            target/release/katwebsite
       - uses: actions/upload-artifact@v2
         if: ${{ success() && matrix.os == 'windows-latest' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.rust }}
-          path: target/release/katwebsite.exe
+          path: |
+            docs
+            template
+            target/release/katwebsite.exe
       - run: cargo test
   build-cross:
     name: Build on ${{ matrix.target }} using cross
@@ -84,4 +90,7 @@ jobs:
         if: success()
         with:
           name: ubuntu-latest-stable-${{ matrix.target }}
-          path: target/${{ matrix.target}}-unknown-linux-musl/release/katwebsite
+          path: |
+            docs
+            template
+            target/${{ matrix.target}}-unknown-linux-musl/release/katwebsite
