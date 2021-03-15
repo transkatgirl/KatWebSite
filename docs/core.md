@@ -20,7 +20,7 @@ Configuration files *must* be written in TOML. You may want to read the [full do
 
 Configuration options with no default value must be explicitly specified, or loading the configuration file will fail. In addition, having values in the configuration file that are not used by the program will also load to fail the configuration file. These are both intentional design choices; not bugs. The config file format may change slightly between releases, and making the config parser very strict can prevent subtle issues from cropping up after a major update.
 
-If the order a config option is loaded in is not explicitly specified in this document, the loading order may change between releases, and should not be relied upon. And, unless explicitly specified, config strings do not support wildcards or RegEx of any kind.
+If the order a config option is loaded in is not explicitly specified in this document, the loading order may change between releases, and should not be relied upon. And, unless explicitly specified, config strings do not support wildcards, formatting, or RegEx of any kind.
 
 Directories in the config file are all relative to the program's working directory, unless otherwise specified.
 
@@ -162,7 +162,7 @@ permanent = true
 File-serving is configured on a per-vhost basis through the use of `[[vhost.files]]` blocks.
 
 Each `[[vhost.files]]` block can contain up to two options:
-- `mount` - The base URL segment (for example: `/static`) that this handler targets, defaults to `/`. This matches all URL segments that start with this value, not just the exact value. Supports wildcards and path deserialization.
+- `mount` - The base URL segment (for example: `/static`) that this handler targets, defaults to `/`. This matches all URL segments that start with this value, not just the exact value.
 - `file_dir` - The directory that files are served from. Unlike `[[builder]]` blocks, sub-directories and symbolic links will be served normally, but hidden files and directories will not be served.
 
 An example of a `[[vhost.files]]` block is shown below:
