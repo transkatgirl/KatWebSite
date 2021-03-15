@@ -10,7 +10,8 @@ If the documentation does not match the program's current behavior or is missing
 		1. [Enabling or disabling Builder Renderers](#enabling-or-disabling-builder-renderers)
 		2. [Configuring additional Render inputs](#configuring-additional-render-inputs)
 		3. [Configuring Liquid defaults](#configuring-liquid-defaults)
-	2. [Web server configuration](#web-server-configuration)
+	3. [Copier configuration](#copier-configuration)
+	4. [Web server configuration](#web-server-configuration)
 		1. [Configuring HTTP redirects](#configuring-http-redirects)
 		2. [Configuring HTTP file handlers](#configuring-http-file-handlers)
 		3. [Configuring TLS](#configuring-tls)
@@ -18,7 +19,7 @@ If the documentation does not match the program's current behavior or is missing
 		5. [Global web server configuration](#global-web-server-configuration)
 2. [Logging](#logging)
 	1. [Advanced Logging](#advanced-logging)
-2. [Site generation](#site-generation)
+3. [Site generation](#site-generation)
 	1. [Overview](#overview)
 	2. [Liquid templating](#liquid-templating)
 		1. [Frontmatter](#frontmatter)
@@ -129,6 +130,27 @@ An example of a `[builder.default_vars]` block is shown below:
 [builder.default_vars]
 title = "My page"
 ```
+
+---
+
+### Copier configuration
+KatWebSite allows you to create "dumb" Builders through the use of Copiers. However, [unlike Builders](#overview), Copiers *recursively* copy files from a set of paths to an output directory, and resolve symbolic links in the process of doing so.
+
+Each `[[copier]]` block can have up to three options:
+- `input_dirs` - The files/directories to copy files from.
+- `output` - The directory to copies files to.
+- `overwrite` - If existing files should be overwritten (true) or skipped (false). Defaults to false.
+
+An example of a `[[copier]]` block is shown below:
+
+```toml
+[[copier]]
+input_dirs = "data"
+output = "html/_data"
+overwrite = true
+```
+
+`[[copier]]` blocks are only run after all Builders are completed (but before the HTTP server is started). To run a Copier before any Builders are started, use the `[[pre_copier]]` block (which behaves the same as a `[[copier]]` block in all other ways).
 
 ---
 

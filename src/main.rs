@@ -31,6 +31,9 @@ struct Opts {
 #[serde(deny_unknown_fields)]
 struct Config {
 	#[serde(default)]
+	pre_copier: Vec<copier::Copier>,
+
+	#[serde(default)]
 	builder: Vec<builder::Builder>,
 
 	#[serde(default)]
@@ -89,6 +92,12 @@ async fn main() {
 
 	if config.builder.is_empty() || config.copier.is_empty() {
 		debug!("no page builders specified, skipping builder init");
+	}
+	for copier in &config.pre_copier {
+		copier::run_copier(copier).unwrap_or_else(|err| {
+			error!("Unable to run copier for {:?}! {}", copier.input_dirs, err);
+			process::exit(exitcode::IOERR);
+		});
 	}
 	for builder in &config.builder {
 		builder::run_builder(builder).unwrap_or_else(|err| {
