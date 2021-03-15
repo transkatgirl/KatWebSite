@@ -3,11 +3,32 @@ This file is intended to provide complete documentation for the KatWebSite binar
 
 If the documentation does not match the program's current behavior or is missing important information, this is considered a bug, and should be reported as such.
 
-**THIS DOCUMENT IS A WORK IN PROGRESS**
-
-**TODO: Make sure all links are valid after document is completed!**
-
 ### Table of Contents
+1. [Configuration](#configuration)
+	1. [Loading and parsing configuration files](#loading-and-parsing-configuration-files)
+	2. [Site generator configuration](#site-generator-configuration)
+		1. [Enabling or disabling Builder Renderers](#enabling-or-disabling-builder-renderers)
+		2. [Configuring additional Render inputs](#configuring-additional-render-inputs)
+		3. [Configuring Liquid defaults](#configuring-liquid-defaults)
+	2. [Web server configuration](#web-server-configuration)
+		1. [Configuring HTTP redirects](#configuring-http-redirects)
+		2. [Configuring HTTP file handlers](#configuring-http-file-handlers)
+		3. [Configuring TLS](#configuring-tls)
+		4. [Setting default HTTP headers](#setting-default-http-headers)
+		5. [Global web server configuration](#global-web-server-configuration)
+2. [Logging](#logging)
+	1. [Advanced Logging](#advanced-logging)
+2. [Site generation](#site-generation)
+	1. [Overview](#overview)
+	2. [Liquid templating](#liquid-templating)
+		1. [Frontmatter](#frontmatter)
+		2. [Liquid variables](#liquid-variables)
+		3. [The data Renderer](#the-data-renderer)
+		4. [Liquid layouts](#liquid-layouts)
+	3. [File-type dependent Renderers](#file-type-dependent-renderers)
+		1. [Markdown Renderer](#markdown-renderer)
+		2. [SASS CSS Renderer](#sass-css-renderer)
+		3. [HTML sanitizer Renderer](#html-sanitizer-renderer)
 
 ---
 
@@ -270,6 +291,8 @@ Builders are run, one-at-a-time, before the web server is started. However, they
 
 Renderers are not typically run on their own, but in groups, to improve performance. Individual [Renderers can be enabled or disabled](#enabling-or-disabling-builder-renderers) in the configuration file.
 
+Renderers load files in a random order unless otherwise specified.
+
 The processing chain that Builders run is below:
 1. Liquid include building
    - If the Liquid Renderer is enabled, all files in the Builder's `include_dir` are loaded into RAM, for later use in the Liquid renderer.
@@ -333,11 +356,9 @@ The allows you to access a limited portion of the Builder's current state throug
 #### The data Renderer
 The data Renderer loads files from the `builder.default_dirs.data_dir` folder, and parses them into the site.data Liquid variable.
 
-As of the time of writing, this Renderer assumes all files in this folder are valid TOML files, and attempts to parse them as such. In the future, support for other file types may be added.
+As of the time of writing, this Renderer assumes all files in this folder are valid TOML files, and attempts to parse them as such. In the future, support for other file types *may* be added.
 
-**TODO: Fix loading order, add support for other file types**
-
-### Liquid layouts
+#### Liquid layouts
 The layout Renderer can be used to apply Liquid layouts to pages, and runs as the final step in the processing chain. If the `layout` liquid variable is set, the Renderer will load the specified file from the `builder.default_dirs.layout_dir` folder, and render it like an ordinary Liquid template.
 
 The rendering of a layout file is almost identical to the rendering of a Page, except for some important differences:

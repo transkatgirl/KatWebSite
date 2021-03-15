@@ -1,6 +1,6 @@
 [[builder]]
 input_dir = "docs"
-output = "html/docs"
+output = "html/_docs"
 
 [builder.renderers]
 markdown = true
@@ -14,7 +14,7 @@ host = "localhost"
 
 [[vhost.files]]
 mount = "/docs"
-file_dir = "html/docs"
+file_dir = "html/_docs"
 
 [[vhost.files]]
 file_dir = "html/_site"
