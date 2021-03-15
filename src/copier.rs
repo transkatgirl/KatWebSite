@@ -1,0 +1,32 @@
+#![warn(clippy::all)]
+
+use fs_extra::{copy_items, dir::CopyOptions};
+use log::info;
+use serde_derive::Deserialize;
+use std::path::PathBuf;
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct Copier {
+	pub input_dirs: Vec<PathBuf>,
+	pub output: PathBuf,
+
+	#[serde(default)]
+	pub overwrite: bool,
+}
+
+pub fn run_copier(copier: &Copier) -> fs_extra::error::Result<u64> {
+	info!("Copying {:?} to {:?}", &copier.input_dirs, &copier.output);
+
+	copy_items(
+		&copier.input_dirs,
+		&copier.output,
+		&CopyOptions {
+			overwrite: copier.overwrite,
+			skip_exist: !copier.overwrite,
+			buffer_size: 64000, // ignored for copy_items
+			copy_inside: true,
+			content_only: false,
+			depth: 0,
+		},
+	)
+}
