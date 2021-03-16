@@ -120,7 +120,10 @@ impl Default for Renderers {
 }
 
 fn read_data(input: PathBuf) -> Option<Object> {
-	debug!("loading {:?}", &input);
+	trace!(
+		"loading {:?}",
+		input.as_path().file_name().unwrap_or_default()
+	);
 
 	match fs::read_to_string(&input) {
 		Ok(text) => match toml::from_str(&text) {
@@ -152,7 +155,10 @@ fn read_path(input_dir: &Path) -> Vec<PathBuf> {
 }
 
 fn create_page(input: PathBuf, defaults: &Object, renderers: &Renderers) -> Option<Page> {
-	debug!("loading {:?}", &input);
+	debug!(
+		"loading {:?}",
+		input.as_path().file_name().unwrap_or_default()
+	);
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
 		warn!("Unable to read {:?}! {}", &input, err);
@@ -165,10 +171,6 @@ fn create_page(input: PathBuf, defaults: &Object, renderers: &Renderers) -> Opti
 		content: input_str,
 	};
 
-	if !renderers.liquid {
-		return Some(page);
-	}
-
 	let mut extractor = Extractor::new(&page.content);
 	extractor.select_by_terminator("---");
 	extractor.discard_first_line();
@@ -179,11 +181,13 @@ fn create_page(input: PathBuf, defaults: &Object, renderers: &Renderers) -> Opti
 		return None;
 	}
 
-	page.data
-		.extend(toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
-			warn!("Unable to parse {:?}'s frontmatter! {}", &input, err);
-			Object::new()
-		}));
+	if renderers.liquid {
+		page.data
+			.extend(toml::from_str(&extractor.extract()).unwrap_or_else(|err| {
+				warn!("Unable to parse {:?}'s frontmatter! {}", &input, err);
+				Object::new()
+			}));
+	}
 
 	page.content = content.to_owned();
 
@@ -247,14 +251,18 @@ fn build_site_page(
 		})
 	};
 
+	page
+}
+
+fn render_page(mut page: Page, renderers: &Renderers) -> Page {
 	match page.path.as_path().extension().unwrap_or_default().to_str() {
 		Some("md") if renderers.markdown => {
-			trace!("generating {:?}", &page.path);
+			debug!("generating {:?}", &page.path);
 			page.content = render_markdown(&page.content, renderers);
 			page.path.set_extension("html");
 		}
 		Some("sass") if renderers.sass => {
-			trace!("generating {:?}", &page.path);
+			debug!("generating {:?}", &page.path);
 			page.content = render_sass(page.content.to_owned()).unwrap_or_else(|err| {
 				error!("Unable to compile {:?}! {}", &page.path, err);
 				process::exit(exitcode::DATAERR);
@@ -263,7 +271,13 @@ fn build_site_page(
 		}
 		_ => (),
 	}
-
+	match page.path.as_path().extension().unwrap_or_default().to_str() {
+		Some("html") if renderers.sanitizer => {
+			debug!("sanitizing {:?}", &page.path);
+			page.content = ammonia::clean(&page.content);
+		}
+		_ => (),
+	}
 	page
 }
 
@@ -275,30 +289,20 @@ fn complete_site_page(
 	dirs: &Dirs,
 	partials: InMemorySource,
 ) -> Page {
-	match page.path.as_path().extension().unwrap_or_default().to_str() {
-		Some("html") if renderers.sanitizer => {
-			trace!("sanitizing {:?}", &page.path);
-			page.content = ammonia::clean(&page.content);
-		}
-		_ => (),
-	}
-
 	if !renderers.layout {
-		return page
+		return page;
 	}
 
 	if let Some(Value::Scalar(template)) = page.data.get("layout") {
 		let layout = template.to_owned().into_string();
 
 		if layout.is_empty() {
-			return page
+			return page;
 		}
 
-		debug!("applying layout to {:?}", &page.path);
+		debug!("laying out {:?}", &page.path);
 
-		let template_path = input_dir
-			.join(&dirs.layout_dir)
-			.join(layout);
+		let template_path = input_dir.join(&dirs.layout_dir).join(layout);
 
 		match fs::read_to_string(&template_path) {
 			Ok(template_content) => {
@@ -344,7 +348,10 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 				.as_path()
 				.join(&builder.default_dirs.include_dir),
 		) {
-			debug!("loading {:?}", &file);
+			trace!(
+				"loading {:?}",
+				file.as_path().file_name().unwrap_or_default()
+			);
 			partials.add(
 				file.file_stem()
 					.unwrap_or_default()
@@ -379,6 +386,20 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 		.iter()
 		.filter_map(|path| path.file_name())
 		.map(PathBuf::from)
+		.par_bridge()
+		.inspect(|p| {
+			let input_file = builder.input_dir.as_path().join(p);
+			let output_file = builder.output.as_path().join(p);
+
+			trace!(
+				"copying {:?}",
+				input_file.as_path().file_name().unwrap_or_default()
+			);
+			fs::copy(&input_file, &output_file).unwrap_or_else(|err| {
+				error!("Unable to copy to {:?}! {}", &output_file, err);
+				process::exit(exitcode::IOERR);
+			});
+		})
 		.collect::<Vec<_>>();
 
 	let pages = input
@@ -401,10 +422,19 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 				partials.to_owned(),
 			)
 		})
+		.inspect(|page| {
+			let output_file = builder.output.as_path().join(&page.path);
+
+			trace!("writing {:?}", &page.path);
+			fs::write(&output_file, &page.content).unwrap_or_else(|err| {
+				error!("Unable to write to {:?}! {}", &output_file, err);
+				process::exit(exitcode::IOERR);
+			});
+		})
+		.map(|page| render_page(page, &builder.renderers))
 		.collect::<Vec<_>>();
 
-	site.pages = site
-		.pages
+	site.pages
 		.iter()
 		.par_bridge()
 		.map(|page| {
@@ -417,20 +447,20 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 				partials.to_owned(),
 			)
 		})
-		.collect::<Vec<_>>();
+		.for_each(|page| {
+			let output_file = builder.output.as_path().join(&page.path);
 
-	site.pages.iter().par_bridge().for_each(|page| {
-		let output_file = builder.output.as_path().join(&page.path);
-
-		fs::write(&output_file, &page.content).unwrap_or_else(|err| {
-			error!("Unable to write to {:?}! {}", &output_file, err);
-			process::exit(exitcode::IOERR);
+			trace!("writing {:?}", &page.path);
+			fs::write(&output_file, &page.content).unwrap_or_else(|err| {
+				error!("Unable to write to {:?}! {}", &output_file, err);
+				process::exit(exitcode::IOERR);
+			});
 		});
-	});
 
 	if let Ok(dir) = fs::read_dir(&builder.input_dir) {
 		dir.filter_map(Result::ok)
 			.filter(|e| e.file_type().map(|t| t.is_symlink()).unwrap_or(false))
+			.par_bridge()
 			.for_each(|p| {
 				trace!("symlinking {:?}...", p.path());
 
@@ -444,26 +474,6 @@ pub fn run_builder(builder: &Builder) -> Result<(), Box<dyn Error>> {
 				});
 			});
 	}
-
-	site.files
-		.iter()
-		.filter(|p| !builder.output.as_path().join(p).exists())
-		.par_bridge()
-		.for_each(|p| {
-			let input_file = builder.input_dir.as_path().join(p);
-			let output_file = builder.output.as_path().join(p);
-
-			trace!("symlinking {:?}", &input_file);
-			fs::hard_link(&input_file, &output_file).unwrap_or_else(|err| {
-				trace!("Unable to symlink to {:?}! {}", &output_file, err);
-
-				trace!("copying {:?}...", &input_file);
-				fs::copy(&input_file, &output_file).unwrap_or_else(|err| {
-					error!("Unable to copy to {:?}! {}", &output_file, err);
-					process::exit(exitcode::IOERR);
-				});
-			});
-		});
 
 	Ok(())
 }

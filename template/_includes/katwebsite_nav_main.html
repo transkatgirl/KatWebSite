@@ -1,0 +1,25 @@
+<nav>
+<ul>
+{%- if page.path == "index.html" -%}
+<li><a href=#>Home</a></li>
+{%- else -%}
+<li><a href=index.html>Home</a></li>
+{%- endif -%}
+{%- assign pages = site.pages | sort: "path" -%}
+{%- for iter_page in pages -%}
+{%- assign pathstub = iter_page.path | split:"." -%}
+{%- unless pathstub contains "html" -%}{%- continue -%}{%- endunless-%}
+{%- if iter_page.path == "index.html" -%}{%- continue -%}{%- endif -%}
+{%- if iter_page.path == page.path -%}
+<li><a href=#>
+{%- else -%}
+<li><a href="{{ iter_page.path }}">
+{%- endif -%}
+{%- if iter_page.data.title -%}
+{{ iter_page.data.title }}</a></li>
+{%- else -%}
+{{ iter_page.path }}</a></li>
+{%- endif -%}
+{%- endfor -%}
+</ul>
+</nav> 

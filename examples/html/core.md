@@ -1,8 +1,6 @@
 ---
 title = "KatWebSite Core Docs"
 ---
-[back to main page](/)
-
 # KatWebSite Core Docs
 This file is intended to provide complete documentation for the KatWebSite binary. However, it is not intended to be the entirety of KatWebSite's documentation. There will be additional files in the docs folder that document other components of KatWebSite, such as it's built-in input files.
 
@@ -26,12 +24,12 @@ If the documentation does not match the program's current behavior or is missing
 	1. [Advanced Logging](#advanced-logging)
 3. [Site generation](#site-generation)
 	1. [Overview](#overview)
-	2. [Liquid templating](#liquid-templating)
-		1. [Frontmatter](#frontmatter)
-		2. [Liquid variables](#liquid-variables)
-		3. [The data Renderer](#the-data-renderer)
-		4. [Liquid layouts](#liquid-layouts)
-	3. [File-type dependent Renderers](#file-type-dependent-renderers)
+	2. [Frontmatter](#frontmatter)
+	3. [Liquid templating](#liquid-templating)
+		1. [Liquid variables](#liquid-variables)
+		2. [The data Renderer](#the-data-renderer)
+		3. [Liquid layouts](#liquid-layouts)
+	4. [File-type dependent Renderers](#file-type-dependent-renderers)
 		1. [Markdown Renderer](#markdown-renderer)
 		2. [SASS CSS Renderer](#sass-css-renderer)
 		3. [HTML sanitizer Renderer](#html-sanitizer-renderer)
@@ -80,7 +78,7 @@ If a `[builder.renderers]` block is not specified, all Renderers are enabled, ex
 
 All the implemented Renderers at the time of writing are listed below:
 - `data` - Loads data files contained in `builder.default_dirs.data_dirs` and parses them into Liquid variables.
-- `liquid` - Enables per-file Liquid templating, and discards all input files which don't contain frontmatter.
+- `liquid` - Enables per-file Liquid templating and frontmatter data parsing.
 - `sass` - Compiles SASS files into CSS.
 - `markdown` - Compiles Markdown files into HTML.
 - `sanitizer` - Heavily sanitizes untrusted HTML files.
@@ -314,50 +312,44 @@ The [`FLEXI_LOGGER_PALETTE`](https://docs.rs/flexi_logger/0.17.1/flexi_logger/st
 ## Site generation
 
 ### Overview
-Builders are run, one-at-a-time, before the web server is started. However, they run internal tasks, called Renderers, which are heavily multi-threaded. You can change the maximum number of threads available to Renderers using the `RAYON_NUM_THREADS` environment variable (defaults to the number of CPUs available).
-
-Renderers are not typically run on their own, but in groups, to improve performance. Individual [Renderers can be enabled or disabled](#enabling-or-disabling-builder-renderers) in the configuration file.
+Builders are run, one-at-a-time, before the web server is started. However, they run internal tasks, called Renderers, which are heavily multi-threaded. You can change the maximum number of threads available to Renderers using the `RAYON_NUM_THREADS` environment variable (defaults to the number of CPUs available). Individual [Renderers can be enabled or disabled](#enabling-or-disabling-builder-renderers) in the configuration file.
 
 Renderers load files in a random order unless otherwise specified.
 
 The processing chain that Builders run is below:
-1. Liquid include building
-   - If the Liquid Renderer is enabled, all files in the Builder's `include_dir` are loaded into RAM, for later use in the Liquid renderer.
-2. Data loading
-   - If the data Renderer is enabled, all files in the Builder's `data_dir` are loaded and parsed as Liquid variables.
-3. File scanning
-   - All files in the Builder's `input_dir` are found and loaded into a list for use in later Renderers. However, there are some exceptions:
-     - Subfolders are intentionally ignored, so that Builders with different configurations can be nested inside each-other.
-     - Soft symbolic links are not loaded as ordinary files, but are later re-created in the Builder's `output` directory. This may be useful if you want to have the Builder "copy" over a folder full of static assets.
-4. Page creation
-   - All Files found by the file scanning are loaded into RAM and converted into Page objects.
-   - If the Liquid Renderer is enabled, only files that contain frontmatter opening and closing tags (`---`) will be converted into Page objects. The frontmatter is then removed from the Page's content, and parsed as TOML into the Page's data section.
-5. Site creation
-   - All data found by the data Renderer, all files found by the file scanner, and all Page objects created are converted into a Site object for further processing.
-6. Page building (part 1)
-   - The Site object, along with the Liquid includes, is used to begin building all the Pages inside the Site.
-     1. If the Liquid renderer is enabled, any Liquid inside the Page is rendered, using the Site object and Liquid includes as input.
-     2. If the Markdown renderer is enabled and the Page contains a `.md` extension, the Page is rendered from Markdown to HTML.
-     3. If the SASS renderer is enabled and the Page contains a `.sass` extension, the Page is rendered from SASS to CSS.
-7. Page building (part 2)
-   - The Site object, along with the Liquid includes, is used to finish building all the Pages inside the Site.
-     1. If the HTML sanitizer is enabled and the Page contains HTML, the Page's HTML is sanitized.
-     2. If the Layout renderer is enabled and a `layout` Liquid variable is set, the specified Liquid layout is loaded from `layout_dir` and applied to the Page.
-8. Page writing
+1. Setup
    - **If the Builder's `output` directory exists, all files are removed from it.**
    - If the Builder's `output` directory does not exist, it is created.
-   - All Page objects inside the Site are written to the Builder's `output` directory.
+2. Liquid include building
+   - If the Liquid Renderer is enabled, all files in the Builder's `include_dir` are loaded into RAM, for later use in the Liquid renderer.
+3. Data loading
+   - If the data Renderer is enabled, all files in the Builder's `data_dir` are loaded and parsed as Liquid variables.
+4. File scanning
+   - All files in the Builder's `input_dir` are found, copied to `output`, and loaded into a list for use in later Renderers. However, there are some exceptions:
+     - Subfolders are intentionally ignored, so that Builders with different configurations can be nested inside each-other.
+     - Soft symbolic links are not loaded as ordinary files, but are later re-created in the Builder's `output` directory. This may be useful if you want to have the Builder "copy" over a folder full of static assets.
+5. Page creation
+   - All files found by the file scanning are checked for frontmatter opening and closing tags (`---`). If the file contains these tags, the frontmatter is separated from the file's content and the file gets converted into a Page object.
+     - If the Liquid renderer is enabled, the frontmatter is parsed as TOML into the Page's data section.
+6. Site creation
+   - All data found by the data Renderer, all files found by the file scanner, and all Page objects created are converted into a Site object for further processing.
+7. Page building (part 1)
+   - The Site object, along with the Liquid includes, is used to begin building all the Pages inside the Site.
+     1. If the Liquid renderer is enabled, any Liquid inside the Page is rendered, using the Site object and Liquid includes as input.
+        - The rendered Liquid file is then written to the Builder's `output` directory.
+     2. (Pass #1) If the Markdown renderer is enabled and the Page contains a `.md` extension, the Page is rendered from Markdown to HTML.
+     3. (Pass #1) If the SASS renderer is enabled and the Page contains a `.sass` extension, the Page is rendered from SASS to CSS.
+     4. (Pass #2) If the HTML sanitizer is enabled and the Page contains HTML, the Page's HTML is sanitized.
+8. Page building (part 2)
+   - The Site object, along with the Liquid includes, is used to finish building all the Pages inside the Site and write them to disk.
+     1. If the Layout renderer is enabled and a `layout` Liquid variable is set, the specified Liquid layout is loaded from `layout_dir` and applied to the Page.
+     2. The Page's content is then written to the Builder's `output` directory.
 9. File re-linking
    1. All soft symbolic links in the Builder's `input_dir` directory are found and turned into absolute paths.
    2. The soft symbolic links are re-created in the Builder's `output` directory, using the absolute path generated.
-10. File copying
-    - Files that were found by the file scanning, but were ignored by the page creation, are hard symbolic linked into the Builder's `output` directory. If hard symbolic linking is not possible, the file is copied instead.
 
-### Liquid templating
-The Liquid Renderer allows Pages to use the [Liquid templating language](https://shopify.github.io/liquid/) to dynamically generate Page content at build time. This Renderer uses an expanded version of the Liquid standard library provided by [`liquid-lib`](https://docs.rs/liquid-lib/0.22.0/liquid_lib), to allow for extra functionality like `{% raw %}{% include %}{% endraw %}` blocks.
-
-#### Frontmatter
-This Renderer also handles loading frontmatter variables from Pages. If the Liquid renderer is enabled, frontmatter is removed from input files, and the text inside that frontmatter is parsed as TOML and turned into Liquid variables.
+### Frontmatter
+Frontmatter is automatically removed from input files during Page creation. If the Liquid renderer is enabled, the text inside that frontmatter is parsed as TOML and turned into Liquid variables.
 
 The beginning and end of frontmatter text is marked with `---`. An example of frontmatter above a Markdown document is shown below:
 
@@ -369,6 +361,9 @@ title = "Hello world"
 # My site
 Welcome to my site!
 ```
+
+### Liquid templating
+The Liquid Renderer allows Pages to use the [Liquid templating language](https://shopify.github.io/liquid/) to dynamically generate Page content at build time. This Renderer uses an expanded version of the Liquid standard library provided by [`liquid-lib`](https://docs.rs/liquid-lib/0.22.0/liquid_lib), to allow for extra functionality like `{% raw %}{% include %}{% endraw %}` blocks.
 
 #### Liquid variables
 The allows you to access a limited portion of the Builder's current state through Liquid variables. As of the time of writing, the following variables can be accessed by Liquid templates:
@@ -385,17 +380,17 @@ The allows you to access a limited portion of the Builder's current state throug
 #### The data Renderer
 The data Renderer loads files from the `builder.default_dirs.data_dir` folder, and parses them into the site.data Liquid variable.
 
-As of the time of writing, this Renderer assumes all files in this folder are valid TOML files, and attempts to parse them as such. In the future, support for other file types *may* be added.
+As of the time of writing, this Renderer assumes all files in this folder are valid TOML files, and attempts to parse them as such. In the future, support for other file types *may* be added, so this assumption should not be relied upon.
 
 #### Liquid layouts
 The layout Renderer can be used to apply Liquid layouts to pages, and runs as the final step in the processing chain. If the `layout` liquid variable is set, the Renderer will load the specified file from the `builder.default_dirs.layout_dir` folder, and render it like an ordinary Liquid template.
 
 The rendering of a layout file is almost identical to the rendering of a Page, except for some important differences:
 - The `page.content` Liquid variable contains the Page's rendered content instead of it's raw text, and should be used to fill in the content of the rendered file.
-- If the layout Renderer is enabled but the Liquid Renderer is disabled, layouts will be unable to access frontmatter data (instead, `page.data` will contain an exact copy of the default Liquid variables, if any), frontmatter will not be removed from the `page.content` variable, and layouts will also be unable to access Liquid includes.
+- If the layout Renderer is enabled but the Liquid Renderer is disabled, layouts will be unable to access frontmatter data (instead, `page.data` will contain an exact copy of the default Liquid variables, if any), and layouts will also be unable to access Liquid includes.
 
 ### File-type dependent Renderers
-Some Renderers may only activate on certain file types. During a segment of the build chain (see the [site generation overview](#overview) for a list of all segments), only one file-type dependent renderer can be run at a time.
+Some Renderers may only activate on certain file types. During a pass of the build chain (see the [site generation overview](#overview) for a list of render passes), only one file-type dependent renderer can be run at a time.
 
 File types are detected purely based on file extension. If a file is not what it claims to be, the Renderer's parser may throw an error, generate nonsensical output, or both.
 
