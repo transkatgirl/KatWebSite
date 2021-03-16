@@ -1,0 +1,42 @@
+/* based on https://raw.githubusercontent.com/katattakd/KatSite/master/scss/katsite/_base.scss */
+
+section {
+	padding: 1em 2em;
+	overflow-x: hidden
+}
+
+code {
+	font-size: 90%;
+	display: inline-block;
+	padding: .2em .4em;
+}
+
+blockquote {
+	padding: 0 1em;
+	margin: 0;
+}
+
+audio, canvas, code, iframe, img, svg, video {
+	vertical-align: middle;
+	max-width: 100%;
+	overflow: auto;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+::selection {
+	background: #08f6;
+	text-shadow: none;
+}
+
+:focus {
+	color: #f04;
+	outline-width: 0;
+}
+
+td, th {
+	padding: .4em;
+	border: .15em solid;
+}

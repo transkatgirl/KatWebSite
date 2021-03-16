@@ -284,15 +284,21 @@ fn complete_site_page(
 	}
 
 	if !renderers.layout {
-		return page;
+		return page
 	}
 
 	if let Some(Value::Scalar(template)) = page.data.get("layout") {
+		let layout = template.to_owned().into_string();
+
+		if layout.is_empty() {
+			return page
+		}
+
 		debug!("applying layout to {:?}", &page.path);
 
 		let template_path = input_dir
 			.join(&dirs.layout_dir)
-			.join(template.to_owned().into_string());
+			.join(layout);
 
 		match fs::read_to_string(&template_path) {
 			Ok(template_content) => {

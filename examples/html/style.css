@@ -1,0 +1,28 @@
+---
+layout = ""
+---
+
+{% include "modern_normalize" %}
+{% include "katwebsite_theme_base" %}
+
+/* based on https://raw.githubusercontent.com/katattakd/KatSite/master/scss/katsite/themes/_basic.scss */
+
+body {
+	font: 16px/1.6 sans-serif
+}
+
+code {
+	background: #eee
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+blockquote {
+	border-left: .3em solid;
+}

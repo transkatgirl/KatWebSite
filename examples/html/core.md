@@ -365,9 +365,9 @@ The beginning and end of frontmatter text is marked with `---`. An example of fr
 ---
 title = "Hello world"
 ---
+
 # My site
 Welcome to my site!
-
 ```
 
 #### Liquid variables

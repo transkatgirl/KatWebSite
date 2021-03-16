@@ -1,0 +1,50 @@
+/* Taken from https://github.com/sindresorhus/modern-normalize and adapted for use in KatWebSite themes */
+
+body {
+	margin: 0
+}
+
+hr {
+	height: 0;
+	color: inherit
+}
+
+abbr[title] {
+	text-decoration: underline dotted
+}
+
+b, strong {
+	font-weight: bolder
+}
+
+code, pre {
+	font: 1em monospace
+}
+
+small {
+	font-size: 80%
+}
+
+sub, sup {
+	font-size: 75%;
+	line-height: 0;
+	position: relative;
+	vertical-align: baseline
+}
+
+sub {
+	bottom: -.25em
+}
+
+sup {
+	top: -.5em
+}
+
+table {
+	text-indent: 0;
+	border-color: inherit
+}
+
+summary {
+	display: list-item
+}
