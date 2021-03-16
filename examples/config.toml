@@ -1,6 +1,7 @@
 [[pre_copier]]
 input_dir = "../template"
 output = "html"
+overwrite = true
 
 [[builder]]
 input_dir = "html"
@@ -8,6 +9,8 @@ output = "html/_site"
 
 [builder.default_vars]
 layout = "default.html"
+lang = "en"
+generator = "katwebsite"
 
 [[vhost]]
 host = "localhost"
@@ -17,12 +20,13 @@ file_dir = "html/_site"
 
 [headers]
 server = "KatWebSite"
+#link = "</style.css>; rel=\"stylesheet\"" # cool but not super practical
 
 # todo: move the below config out of the example file and into a "best-practices" document
 
 # strict-transport-security = "max-age=63072000;includeSubDomains;preload" # An example of HSTS preloading. Please read more about this from https://hstspreload.org before using it in your own configuration.
 
-content-security-policy = "default-src 'none'; connect-src 'self'; font-src 'self'; img-src 'self'; media-src 'self'; script-src 'self'; style-src 'self'; base-uri 'none'; plugin-types 'none'; sandbox allow-scripts; frame-ancestors 'none'; block-all-mixed-content; require-trusted-types-for 'script'; upgrade-insecure-requests"
+#content-security-policy = "default-src 'none'; connect-src 'self'; font-src 'self'; img-src 'self'; media-src 'self'; script-src 'self'; style-src 'self'; base-uri 'none'; plugin-types 'none'; sandbox allow-scripts; frame-ancestors 'none'; block-all-mixed-content; require-trusted-types-for 'script'; upgrade-insecure-requests"
 # A strict but reasonable Content-Security-Policy.
 # A reference for CSP values can be found at https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy, and https://csp-evaluator.withgoogle.com can be useful for validating your CSP header.
 

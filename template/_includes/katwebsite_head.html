@@ -1,0 +1,75 @@
+<meta name=viewport content="width=device-width,initial-scale=1">
+
+{%- if site.files contains "style.css" or site.files contains "style.scss" -%}
+<link rel=stylesheet href="style.css">
+{%- endif -%}
+
+{%- if site.files contains "favicon.png" -%}
+<link rel="icon" sizes="48x48" href="favicon.png">
+{%- endif -%}
+
+{%- if site.files contains "apple-touch-icon.png" -%}
+<link rel="icon" sizes="192x192" href="apple-touch-icon.png">
+{%- endif -%}
+
+{%- if page.data.title -%}
+<title>{{ page.data.title }}</title>
+{%- endif -%}
+
+{%- if page.data.app_name -%}
+<meta name=application-name content="{{ page.data.app-name }}">
+{%- endif -%}
+
+{%- if page.data.author -%}
+<meta name=author content="{{ page.data.author }}">
+{%- endif -%}
+
+{%- if page.data.description -%}
+<meta name=description content="{{ page.data.description }}">
+{%- endif -%}
+
+{%- if page.data.generator -%}
+<meta name=generator content="{{ page.data.generator }}">
+{%- endif -%}
+
+{%- if page.data.keywords -%}
+<meta name=keywords content="{{ page.data.keywords }}">
+{%- endif -%}
+
+{%- if page.data.theme_color -%}
+<meta name=theme-color content="{{ page.data.theme_color }}">
+{%- endif -%}
+
+{%- if page.data.title and page.data.og_url and page.data.og_image -%}
+<meta property=og:title content="{{ page.data.title }}">
+{%- if page.data.og_type -%}
+<meta property=og:type content="{{ page.data.og_type }}">
+{%- else -%}
+<meta property=og:type content=website>
+{%- endif -%}
+<meta property=og:image content="{{ page.data.og_image }}">
+<meta property=og:url content="{{ page.data.og_url }}/{{ page.path }}">
+{%- if page.data.og_audio -%}
+<meta property=og:audio content="{{ page.data.og_audio }}">
+{%- endif -%}
+{%- if page.data.description -%}
+<meta property=og:description content="{{ page.data.description }}">
+{%- endif -%}
+{%- if page.data.lang -%}
+<meta property=og:locale content="{{ page.data.lang }}">
+{%- endif -%}
+{%- if page.data.site_name -%}
+<meta property=og:site_name content="{{ page.data.site_name }}">
+{%- endif -%}
+{%- if page.data.og_video -%}
+<meta property=og:video content="{{ page.data.og_video }}">
+{%- endif -%}
+{%- endif -%}
+
+{%- if page.data.no_crawl -%}
+<meta name=robots content=noindex,nofollow>
+{%- endif -%}
+
+{%- if page.data.nsfw -%}
+<meta name=rating content=adult>
+{%- endif -%}
