@@ -3,8 +3,12 @@
 use clap::Clap;
 use futures::try_join;
 use log::{debug, error, info, trace, warn};
+use mimalloc::MiMalloc;
 use serde_derive::Deserialize;
 use std::{env, fs, path::PathBuf, process};
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 mod builder;
 mod copier;

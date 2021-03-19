@@ -261,7 +261,7 @@ fn render_page(mut page: Page, renderers: &Renderers) -> Page {
 			page.content = render_markdown(&page.content, renderers);
 			page.path.set_extension("html");
 		}
-		Some("sass") if renderers.sass => {
+		Some("scss") if renderers.sass => {
 			debug!("generating {:?}", &page.path);
 			page.content = render_sass(page.content.to_owned()).unwrap_or_else(|err| {
 				error!("Unable to compile {:?}! {}", &page.path, err);
