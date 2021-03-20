@@ -4,16 +4,16 @@
 
 <meta name=viewport content="width=device-width,initial-scale=1">
 
-{%- if site.files contains "style.css" or site.files contains "style.sass" -%}
-<link rel=stylesheet href="style.css">
+{%- if site.files contains "style.css" or site.files contains "style.scss" -%}
+<link rel=stylesheet href=style.css>
 {%- endif -%}
 
 {%- if site.files contains "favicon.png" -%}
-<link rel="icon" sizes="48x48" href="favicon.png">
+<link rel="icon" sizes=48x48 href=favicon.png>
 {%- endif -%}
 
 {%- if site.files contains "apple-touch-icon.png" -%}
-<link rel="icon" sizes="192x192" href="apple-touch-icon.png">
+<link rel="icon" sizes=192x192 href=apple-touch-icon.png>
 {%- endif -%}
 
 {%- if page.data.title -%}
@@ -52,7 +52,7 @@
 <meta property=og:type content=website>
 {%- endif -%}
 <meta property=og:image content="{{ page.data.og_image }}">
-<meta property=og:url content="{{ page.data.og_url }}/{{ page.path }}">
+<meta property=og:url content="{{ page.data.og_url }}/{{ page.path | url_encode }}">
 {%- if page.data.og_audio -%}
 <meta property=og:audio content="{{ page.data.og_audio }}">
 {%- endif -%}

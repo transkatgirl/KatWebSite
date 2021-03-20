@@ -338,7 +338,7 @@ The processing chain that Builders run is below:
      1. If the Liquid renderer is enabled, any Liquid inside the Page is rendered, using the Site object and Liquid includes as input.
         - The rendered Liquid file is then written to the Builder's `output` directory.
      2. (Pass #1) If the Markdown renderer is enabled and the Page contains a `.md` extension, the Page is rendered from Markdown to HTML.
-     3. (Pass #1) If the SASS renderer is enabled and the Page contains a `.sass` extension, the Page is rendered from SASS to CSS.
+     3. (Pass #1) If the SASS renderer is enabled and the Page contains a `.scss` extension, the Page is rendered from SASS to CSS.
      4. (Pass #2) If the HTML sanitizer is enabled and the Page contains HTML, the Page's HTML is sanitized.
 8. Page building (part 2)
    - The Site object, along with the Liquid includes, is used to finish building all the Pages inside the Site and write them to disk.
@@ -398,7 +398,7 @@ File types are detected purely based on file extension. If a file is not what it
 The Markdown Renderer compiles Markdown files into HTML, and only activates on files with the `.md` extension. `Comrak` is used as the [CommonMark](https://commonmark.org/help/) renderer, with both [GFM and Comrak extensions](https://docs.rs/comrak/0.9.1/comrak/struct.ComrakExtensionOptions.html) enabled.
 
 #### SASS CSS Renderer
-The SASS Renderer compiles SASS files into CSS, and only activates on files with the `.sass` extension. [`Grass`](https://lib.rs/crates/grass) is used as the SASS compiler, and it lacks some major features found in [Dart Sass](https://sass-lang.com/documentation), such as the indented syntax, CSS imports, `@forward`, and compressed output. However, despite these major issues, and a few minor ones not listed here, the SASS Renderer is still capable of compiling most SASS files without issue.
+The SASS Renderer compiles SASS files into CSS, and only activates on files with the `.scss` extension. [`Grass`](https://lib.rs/crates/grass) is used as the SASS compiler, and it lacks some major features found in [Dart Sass](https://sass-lang.com/documentation), such as the indented syntax, CSS imports, `@forward`, and compressed output. However, despite these major issues, and a few minor ones not listed here, the SASS Renderer is still capable of compiling most SASS files without issue.
 
 #### HTML sanitizer Renderer
 The HTML sanitizer Renderer can be used to sanitize untrusted HTML in a very restrictive way. `Ammonia` is as the HTML sanitizer, which is based on the [Servo browser engine](https://servo.org). Therefore, the sanitizer should be very robust and suitable for user provided input.

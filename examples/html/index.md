@@ -2,7 +2,7 @@
 title = "KatWebSite Demo Page"
 ---
 # KatWebSite Demo Page
-Welcome to [KatWebSite](https://github.com/katattakd/KatWebSite), a minimal static site generator and web server. This is the demo page used to test if KatWebSite is working properly, an example of what a simple site built with KatWebSite would look like, and also provides easy access to KatWebSite's documentation.
+Welcome to [KatWebSite](https://github.com/katattakd/KatWebSite), a minimal static site generator and web server. This is the demo page used to test if KatWebSite is working properly, provide an example of what a simple site built with KatWebSite would look like, and also provides easy access to KatWebSite's documentation.
 
 ## Documentation
 KatWebSite is currently a work in progress, and much of it's documentation is incomplete or missing.

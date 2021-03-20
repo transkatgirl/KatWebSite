@@ -1,0 +1,74 @@
+---
+layout = ""
+---
+{% include "modern_normalize" %}
+
+$katwebsite_nav_style: 0;
+
+{% include "katwebsite_theme_base" %}
+// based on https://raw.githubusercontent.com/katattakd/KatSite/master/scss/katsite/themes/_basic.scss
+
+body {
+	font: 16px/1.6 sans-serif
+}
+
+code {
+	background: #eee
+}
+
+a {
+	text-decoration: none
+}
+
+a:hover {
+	text-decoration: underline
+}
+
+blockquote {
+	border-left: .3em solid
+}
+
+::selection {
+	background: #08f6;
+	text-shadow: none;
+}
+
+:focus {
+	color: #f04;
+	outline-width: 0;
+}
+
+@if $katwebsite_nav_style == 0 {
+	nav {
+		[href="#"]::before {
+			color: #000;
+		}
+	}
+} @else if $katwebsite_nav_style == 1 {
+	nav {
+		background: #ddd;
+		span {
+			background: #eee
+		}
+		[href="#"] {
+			color: #000;
+		}
+	}
+	//
+} @else if $katwebsite_nav_style == 2 {
+	//
+} @else { // make "list" of navbar items when a katwebsite navbar style is not being used
+	header {
+		padding: 1.25em 2em 0;
+	}
+	nav {
+		list-style-type: disc;
+		padding-left: 20px;
+		a {
+			display: list-item
+		}
+		[href="#"] {
+			color: #000;
+		}
+	}
+}

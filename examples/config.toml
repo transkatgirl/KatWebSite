@@ -10,6 +10,7 @@ output = "html/_site"
 [builder.default_vars]
 layout = "default.html"
 lang = "en"
+site_name = "KatWebSite Demo"
 generator = "katwebsite"
 
 [[vhost]]

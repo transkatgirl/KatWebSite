@@ -1,0 +1,117 @@
+// based on https://raw.githubusercontent.com/katattakd/KatSite/master/scss/katsite/_base.scss
+
+body {
+	margin: 0
+}
+
+article {
+	padding: 1em 2em;
+	overflow-x: hidden
+}
+
+code {
+	font-size: 90%;
+	display: inline-block;
+	padding: .2em .4em;
+}
+
+blockquote {
+	padding: 0 1em;
+	margin: 0;
+}
+
+audio, canvas, code, iframe, img, svg, video {
+	vertical-align: middle;
+	max-width: 100%;
+	overflow: auto;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+td, th {
+	padding: .4em;
+	border: .15em solid;
+}
+
+#navbar_toggle {
+	display: none
+}
+
+@if $katwebsite_nav_style == 0 {
+	article {
+		padding: 0 2em 1em
+	}
+	nav {
+		padding: 0 2em;
+
+		a {
+			padding-top: 1.25em;
+			display: inline-block;
+		}
+
+		a:first-child[href="#"], [href$="void(0)"] {
+			display: none
+		}
+		
+		:not(:first-child):not([href="#"]) {
+			display: none;
+			text-decoration: none;
+		}
+
+		[href="#"]::before {
+			display: inline-block;
+			content: '›';
+			padding: 0 0.2em
+		}
+	}
+} @else if $katwebsite_nav_style == 1 { // unfinished
+	article {
+		padding: 0 2em 1em
+	}
+	nav {
+		display: grid;
+		grid: auto / 1fr repeat(10, auto);
+		padding: 1em 0;
+		line-height: 1.1;
+
+		[href$="void(0)"] {
+			display: none
+		}
+		span {
+			padding: 1em;
+		}
+	}
+	@media screen and (max-width: 900px) {
+		nav {
+			display: block;
+			padding: 0;
+			span {
+				display: block
+			}
+			[href$="void(0)"] {
+				display: unset;
+			}
+		}
+
+		#navbar_toggle:not(:checked) ~ nav {
+			label::before {
+				content: "☰";
+			}
+			span {
+				display: none!important;
+			}
+		}
+		#navbar_toggle:checked ~ nav label span::after {
+			content: " ✖";
+		}
+	}
+
+} @else if $katwebsite_nav_style == 2 { // unfinished
+	//
+} @else {
+	header > nav [href$="void(0)"] {
+		display: none
+	}
+}
