@@ -51,7 +51,7 @@ td, th {
 			display: inline-block;
 		}
 
-		a:first-child[href="#"], [href$="void(0)"] {
+		:first-child[href="#"], [href$="void(0)"] {
 			display: none
 		}
 		
@@ -66,7 +66,7 @@ td, th {
 			padding: 0 0.2em
 		}
 	}
-} @else if $katwebsite_nav_style == 1 { // unfinished
+} @else if $katwebsite_nav_style == 1 {
 	article {
 		padding: 0 2em 1em
 	}
@@ -83,7 +83,7 @@ td, th {
 			padding: 1em;
 		}
 	}
-	@media screen and (max-width: 900px) {
+	@media screen and (max-width: $mobile-width) { // TODO: Detect optimal max-width?
 		nav {
 			display: block;
 			padding: 0;
@@ -99,15 +99,21 @@ td, th {
 			label::before {
 				content: "☰";
 			}
-			span {
+			:first-child {
+				display: inline-block;
+			}
+			:not(:first-child) span {
 				display: none!important;
+			}
+			label {
+				float: right;
+				padding: 1em;
 			}
 		}
 		#navbar_toggle:checked ~ nav label span::after {
-			content: " ✖";
+			content: "Close menu ✖";
 		}
 	}
-
 } @else if $katwebsite_nav_style == 2 { // unfinished
 	//
 } @else {

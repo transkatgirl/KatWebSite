@@ -3,7 +3,8 @@ layout = ""
 ---
 {% include "modern_normalize" %}
 
-$katwebsite_nav_style: 0;
+$mobile_width: 900px;
+$katwebsite_nav_style: 1;
 
 {% include "katwebsite_theme_base" %}
 // based on https://raw.githubusercontent.com/katattakd/KatSite/master/scss/katsite/themes/_basic.scss
