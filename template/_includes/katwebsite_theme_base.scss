@@ -5,12 +5,8 @@ body {
 }
 
 article {
-	padding: 1em 2em;
-	overflow-x: hidden;
-}
-
-%article-no-top-pad {
 	padding: 0 2em 1em;
+	overflow-x: hidden;
 }
 
 code {
@@ -46,6 +42,7 @@ header {
 	display: contents;
 }
 
+// TODO: Fix cursor for navbar open/close, simplify underlying HTML
 @mixin sticky-mobile-navbar {
 	nav {
 		display: block;
@@ -79,10 +76,17 @@ header {
 	}
 }
 
-@if $katwebsite_nav_style == 0 {
-	article {
-		@extend %article-no-top-pad;
+@mixin desktop-navbar($display) {
+	[href$="void(0)"] {
+		display: none;
 	}
+	span {
+		padding: 1em;
+		display: $display;
+	}
+}
+
+@if $katwebsite_nav_style == 0 {
 	nav {
 		padding: 0 2em;
 
@@ -106,20 +110,11 @@ header {
 		}
 	}
 } @else if $katwebsite_nav_style == 1 {
-	article {
-		@extend %article-no-top-pad;
-	}
 	nav {
 		display: grid;
-		grid: auto / 1fr repeat(10, auto);
+		grid: auto / 1fr repeat(16, auto);
 
-		[href$="void(0)"] {
-			display: none;
-		}
-		span {
-			display: inline-block;
-			padding: 1em;
-		}
+		@include desktop-navbar(inline-block);
 	}
 
 	@media screen and (max-width: $mobile-width) {
@@ -131,19 +126,14 @@ header {
 	}
 	nav {
 		position: fixed;
+		width: $navbar-width;
 		height: 100%;
-		span {
-			padding: 1em;
-			display: block;
-		}
-		[href$="void(0)"] {
-			display: none;
-		}
+
+		@include desktop-navbar(block);
 	}
 
 	@media screen and (max-width: $mobile-width) {
 		article {
-			@extend %article-no-top-pad;
 			margin-left: unset;
 		}
 		@include sticky-mobile-navbar;
@@ -165,10 +155,7 @@ header {
 		}
 	}
 } @else {
-	header {
-		display: block;
-		nav [href$="void(0)"] {
-			display: none;
-		}
+	nav [href$="void(0)"] {
+		display: none;
 	}
 }

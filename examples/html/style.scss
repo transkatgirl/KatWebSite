@@ -4,7 +4,7 @@ layout = ""
 
 $mobile_width: 50em;
 $navbar_width: 16em;
-$katwebsite_nav_style: 2;
+$katwebsite_nav_style: 0;
 
 {% include "katwebsite_theme_base" %} // note: this will automatically pull in modern_normalize.scss
 // based on https://raw.githubusercontent.com/katattakd/KatSite/master/scss/katsite/themes/_basic.scss
@@ -53,23 +53,9 @@ blockquote {
 			color: #000;
 		}
 	}
-} @else if $katwebsite_nav_style == 1 {
+} @else if $katwebsite_nav_style == 1 or $katwebsite_nav_style == 2 {
 	nav {
 		background: #ddd;
-		span {
-			background: #eee;
-		}
-		[href="#"] {
-			color: #000;
-		}
-	}
-	//
-} @else if $katwebsite_nav_style == 2 {
-	nav {
-		background: #ddd;
-		width: 16em;
-	}
-	header {
 		span {
 			background: #eee;
 		}
@@ -79,6 +65,7 @@ blockquote {
 	}
 } @else { // make "list" of navbar items when a katwebsite navbar style is not being used
 	header {
+		display: block;
 		padding: 1.25em 2em 0;
 	}
 	nav {
