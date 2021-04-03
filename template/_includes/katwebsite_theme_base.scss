@@ -42,15 +42,16 @@ header {
 	display: contents;
 }
 
-// TODO: Fix cursor for navbar open/close, simplify underlying HTML
 @mixin sticky-mobile-navbar {
 	nav {
 		display: block;
 		position: sticky;
 		top: 0;
-		padding: 0;
 		span {
 			display: block;
+		}
+		label {
+			cursor: inherit;
 		}
 		[href$="void(0)"] {
 			display: unset;
