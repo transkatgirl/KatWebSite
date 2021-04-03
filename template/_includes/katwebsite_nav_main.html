@@ -16,7 +16,7 @@ Home
 {%- endif -%}
 </span></a>
 {%- endfor -%}
-<a href=javascript:void(0)><label for=navbar_toggle aria-label="Toggle main menu"><span></span></label></a>
+<a href=javascript:void(0)><label for=navbar_toggle aria-label="Toggle main menu"><div></div><span></span></label></a>
 {%- assign pages = site.pages | sort: "path" -%}
 {%- for iter_page in pages -%}
 {%- assign pathstub = iter_page.path | split:"." -%}
@@ -34,4 +34,4 @@ Home
 {%- endif -%}
 </span></a>
 {%- endfor -%}
-</nav> 
+</nav>

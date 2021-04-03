@@ -3,30 +3,31 @@ layout = ""
 ---
 {% include "modern_normalize" %}
 
-$mobile_width: 900px;
-$katwebsite_nav_style: 1;
+$mobile_width: 50em;
+$navbar_width: 16em;
+$katwebsite_nav_style: 2;
 
 {% include "katwebsite_theme_base" %}
 // based on https://raw.githubusercontent.com/katattakd/KatSite/master/scss/katsite/themes/_basic.scss
 
 body {
-	font: 16px/1.6 sans-serif
+	font: 16px/1.6 sans-serif;
 }
 
 code {
-	background: #eee
+	background: #eee;
 }
 
 a {
-	text-decoration: none
+	text-decoration: none;
 }
 
 a:hover {
-	text-decoration: underline
+	text-decoration: underline;
 }
 
 blockquote {
-	border-left: .3em solid
+	border-left: .3em solid;
 }
 
 ::selection {
@@ -49,7 +50,7 @@ blockquote {
 	nav {
 		background: #ddd;
 		span {
-			background: #eee
+			background: #eee;
 		}
 		[href="#"] {
 			color: #000;
@@ -57,16 +58,27 @@ blockquote {
 	}
 	//
 } @else if $katwebsite_nav_style == 2 {
-	//
+	nav {
+		background: #ddd;
+		width: 16em;
+	}
+	header {
+		span {
+			background: #eee;
+		}
+		[href="#"] {
+			color: #000;
+		}
+	}
 } @else { // make "list" of navbar items when a katwebsite navbar style is not being used
 	header {
 		padding: 1.25em 2em 0;
 	}
 	nav {
 		list-style-type: disc;
-		padding-left: 20px;
+		padding-left: 2.5em;
 		a {
-			display: list-item
+			display: list-item;
 		}
 		[href="#"] {
 			color: #000;
