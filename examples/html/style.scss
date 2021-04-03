@@ -1,13 +1,12 @@
 ---
 layout = ""
 ---
-{% include "modern_normalize" %}
 
 $mobile_width: 50em;
 $navbar_width: 16em;
 $katwebsite_nav_style: 2;
 
-{% include "katwebsite_theme_base" %}
+{% include "katwebsite_theme_base" %} // note: this will automatically pull in modern_normalize.scss
 // based on https://raw.githubusercontent.com/katattakd/KatSite/master/scss/katsite/themes/_basic.scss
 
 body {
@@ -18,13 +17,21 @@ code {
 	background: #eee;
 }
 
+td, th {
+	border: .15em solid;
+	padding: .4em;
+}
+
 a {
 	text-decoration: none;
 }
 
-a:hover {
-	text-decoration: underline;
+article {
+	a:hover {
+		text-decoration: underline;
+	}
 }
+
 
 blockquote {
 	border-left: .3em solid;

@@ -1,4 +1,4 @@
-// based on https://raw.githubusercontent.com/katattakd/KatSite/master/scss/katsite/_base.scss
+{% include "modern_normalize" %}
 
 body {
 	margin: 0;
@@ -9,6 +9,10 @@ article {
 	overflow-x: hidden;
 }
 
+%article-no-top-pad {
+	padding: 0 2em 1em;
+}
+
 code {
 	font-size: 90%;
 	display: inline-block;
@@ -16,7 +20,7 @@ code {
 }
 
 blockquote {
-	padding: 0 1em;
+	padding: 0 1.2em;
 	margin: 0;
 }
 
@@ -28,11 +32,6 @@ audio, canvas, code, iframe, img, svg, video {
 
 table {
 	border-collapse: collapse;
-}
-
-td, th {
-	padding: .4em;
-	border: .15em solid;
 }
 
 ul, ol, dd {
@@ -47,9 +46,42 @@ header {
 	display: contents;
 }
 
+@mixin sticky-mobile-navbar {
+	nav {
+		display: block;
+		position: sticky;
+		top: 0;
+		padding: 0;
+		span {
+			display: block;
+		}
+		[href$="void(0)"] {
+			display: unset;
+		}
+	}
+	#navbar_toggle:not(:checked) ~ nav { 
+		label::before {
+			content: "☰";
+		}
+		:first-child {
+			display: inline-block;
+		}
+		:not(:first-child) span {
+			display: none!important;
+		}
+		label {
+			float: right;
+			padding: 1em;
+		}
+	}
+	#navbar_toggle:checked ~ nav label span::after {
+		content: "Close menu ✖";
+	}
+}
+
 @if $katwebsite_nav_style == 0 {
 	article {
-		padding: 0 2em 1em;
+		@extend %article-no-top-pad;
 	}
 	nav {
 		padding: 0 2em;
@@ -69,14 +101,13 @@ header {
 		}
 
 		[href="#"]::before {
-			display: inline-block;
 			content: '›';
 			padding: 0 0.2em;
 		}
 	}
 } @else if $katwebsite_nav_style == 1 {
 	article {
-		padding: 0 2em 1em;
+		@extend %article-no-top-pad;
 	}
 	nav {
 		display: grid;
@@ -90,49 +121,17 @@ header {
 			padding: 1em;
 		}
 	}
-	@media screen and (max-width: $mobile-width) { // TODO: Detect optimal max-width?
-		nav {
-			position: sticky;
-			top: 0;
-			display: block;
-			padding: 0;
-			span {
-				display: block;
-			}
-			[href$="void(0)"] {
-				display: unset;
-			}
-		}
 
-		#navbar_toggle:not(:checked) ~ nav {
-			label::before {
-				content: "☰";
-			}
-			:first-child {
-				display: inline-block;
-			}
-			:not(:first-child) span {
-				display: none!important;
-			}
-			label {
-				float: right;
-				padding: 1em;
-			}
-		}
-		#navbar_toggle:checked ~ nav {
-			line-height: unset;
-			label span::after {
-				content: "Close menu ✖";
-			}
-		}
+	@media screen and (max-width: $mobile-width) {
+		@include sticky-mobile-navbar;
 	}
-} @else if $katwebsite_nav_style == 2 { // unfinished
-	body {
-		display: grid;
-		grid: minmax(100%, 100vh) auto / max-content auto;
+} @else if $katwebsite_nav_style == 2 {
+	article {
+		margin-left: $navbar-width;
 	}
 	nav {
-		width: $navbar-width;
+		position: fixed;
+		height: 100%;
 		span {
 			padding: 1em;
 			display: block;
@@ -142,43 +141,18 @@ header {
 		}
 	}
 
-	@media screen and (max-width: $mobile-width) { // TODO: Detect optimal max-width?
-		body {
-			display: unset;
+	@media screen and (max-width: $mobile-width) {
+		article {
+			@extend %article-no-top-pad;
+			margin-left: unset;
 		}
-		nav {
-			display: block;
-			padding: 0;
-			span {
-				display: block;
-			}
-			[href$="void(0)"] {
-				display: unset;
-			}
-		}
+		@include sticky-mobile-navbar;
 
 		#navbar_toggle:not(:checked) ~ nav {
-			position: sticky;
-			top: 0;
 			width: unset;
-			label::before {
-				content: "☰";
-			}
-			:first-child {
-				display: inline-block;
-			}
-			:not(:first-child) span {
-				display: none!important;
-			}
-			label {
-				float: right;
-				padding: 1em;
-			}
 		}
 		#navbar_toggle:checked ~ nav {
 			position: fixed;
-			height: 100%;
-
 			[href$="void(0)"] div {
 				position: fixed;
 				left: $navbar-width;
@@ -188,13 +162,8 @@ header {
 				background-color: black;
 				opacity: 0.5;
 			}
-
-			label span::after {
-				content: "Close menu ✖";
-			}
 		}
 	}
-	//
 } @else {
 	header {
 		display: block;
