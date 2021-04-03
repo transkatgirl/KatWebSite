@@ -81,13 +81,12 @@ header {
 	nav {
 		display: grid;
 		grid: auto / 1fr repeat(10, auto);
-		padding: 1em 0;
-		line-height: 1.1;
 
 		[href$="void(0)"] {
 			display: none;
 		}
 		span {
+			display: inline-block;
 			padding: 1em;
 		}
 	}
@@ -162,7 +161,6 @@ header {
 			position: sticky;
 			top: 0;
 			width: unset;
-			line-height: 1.1;
 			label::before {
 				content: "☰";
 			}

@@ -161,9 +161,13 @@ fn create_page(input: PathBuf, defaults: &Object, renderers: &Renderers) -> Opti
 	);
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
-		warn!("Unable to read {:?}! {}", &input, err);
-		process::exit(exitcode::IOERR);
+		debug!("Unable to read {:?}! {}", &input, err);
+		return String::new();
 	});
+
+	if input_str.is_empty() {
+		return None;
+	}
 
 	let mut page = Page {
 		path: PathBuf::from(input.file_name().unwrap_or_default()),
