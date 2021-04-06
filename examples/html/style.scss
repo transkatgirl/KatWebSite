@@ -4,7 +4,7 @@ layout = ""
 
 $mobile_width: 50em;
 $navbar_width: 16em;
-$katwebsite_nav_style: 1;
+$katwebsite_nav_style: 0;
 
 {% include "katwebsite_theme_base" %} // note: this will automatically pull in modern_normalize.scss
 
@@ -25,10 +25,17 @@ a {
 	text-decoration: none;
 }
 
-article {
-	a:hover {
+nav {
+	[href="#"] {
+		color: #000;
+	}
+	a:not([href="#"]) span:hover {
 		text-decoration: underline;
 	}
+}
+
+article a:hover {
+	text-decoration: underline;
 }
 
 
@@ -46,20 +53,11 @@ blockquote {
 	outline-width: 0;
 }
 
-@if $katwebsite_nav_style == 0 {
-	nav {
-		[href="#"]::before {
-			color: #000;
-		}
-	}
-} @else if $katwebsite_nav_style == 1 or $katwebsite_nav_style == 2 {
+@if $katwebsite_nav_style == 1 or $katwebsite_nav_style == 2 {
 	nav {
 		background: #ddd;
 		span {
 			background: #eee;
-		}
-		[href="#"] {
-			color: #000;
 		}
 	}
 } @else if $katwebsite_nav_style == -1 { // make "list" of navbar items when a katwebsite navbar style is not being used
