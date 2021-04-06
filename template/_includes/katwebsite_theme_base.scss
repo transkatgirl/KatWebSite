@@ -53,7 +53,7 @@ header {
 		label {
 			cursor: inherit;
 		}
-		[href$="void(0)"] {
+		[href^="javascript:"] {
 			display: unset;
 		}
 	}
@@ -64,7 +64,7 @@ header {
 		:first-child {
 			display: inline-block;
 		}
-		:not(:first-child) span {
+		:not(:first-child):not([href^="javascript:"]) {
 			display: none!important;
 		}
 		label {
@@ -78,7 +78,7 @@ header {
 }
 
 @mixin desktop-navbar($display) {
-	[href$="void(0)"] {
+	[href^="javascript:"] {
 		display: none;
 	}
 	span {
@@ -96,7 +96,7 @@ header {
 			display: inline-block;
 		}
 
-		:first-child[href="#"], [href$="void(0)"] {
+		:first-child[href="#"], [href^="javascript:"] {
 			display: none;
 		}
 		
@@ -144,7 +144,7 @@ header {
 		}
 		#navbar_toggle:checked ~ nav {
 			position: fixed;
-			[href$="void(0)"] div {
+			[href^="javascript:"] div {
 				position: fixed;
 				left: $navbar-width;
 				top: 0px;
@@ -156,7 +156,7 @@ header {
 		}
 	}
 } @else {
-	nav [href$="void(0)"] {
+	nav [href^="javascript:"] {
 		display: none;
 	}
 }

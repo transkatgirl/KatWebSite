@@ -1,0 +1,1 @@
+function navbar_toggle(){let c=document.getElementById("navbar_toggle");c.checked=!c.checked}let l=document.querySelector("nav [href='javascript:void(0)']");l.href="javascript:navbar_toggle()";l.firstChild.removeAttribute("for");

@@ -1,5 +1,4 @@
-<input type=checkbox id=navbar_toggle>
-<nav>
+<input type=checkbox id=navbar_toggle><nav>
 {%- for iter_page in site.pages -%}
 {%- unless iter_page.path == "index.html" -%}{%- continue -%}{%- endunless -%}
 {%- if page.path == "index.html" -%}
@@ -35,3 +34,4 @@ Home
 </span></a>
 {%- endfor -%}
 </nav>
+{%- comment -%}{%- endcomment -%}

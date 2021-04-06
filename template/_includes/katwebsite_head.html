@@ -8,6 +8,10 @@
 <link rel=stylesheet href=style.css>
 {%- endif -%}
 
+{%- if site.files contains "main.js" -%}
+<script async src=main.js></script>
+{%- endif -%}
+
 {%- if site.files contains "favicon.png" -%}
 <link rel="icon" sizes=48x48 href=favicon.png>
 {%- endif -%}
@@ -51,8 +55,7 @@
 {%- else -%}
 <meta property=og:type content=website>
 {%- endif -%}
-<meta property=og:image content="{{ page.data.og_image }}">
-<meta property=og:url content="{{ page.data.og_url }}/{{ page.path | url_encode }}">
+<meta property=og:image content="{{ page.data.og_image }}"><meta property=og:url content="{{ page.data.og_url }}/{{ page.path | url_encode }}">
 {%- if page.data.og_audio -%}
 <meta property=og:audio content="{{ page.data.og_audio }}">
 {%- endif -%}
