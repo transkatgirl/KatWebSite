@@ -162,7 +162,7 @@ fn create_page(input: PathBuf, defaults: &Object, renderers: &Renderers) -> Opti
 
 	let input_str = fs::read_to_string(&input).unwrap_or_else(|err| {
 		debug!("Unable to read {:?}! {}", &input, err);
-		return String::new();
+		String::new()
 	});
 
 	if input_str.is_empty() {
