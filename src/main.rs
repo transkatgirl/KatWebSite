@@ -13,6 +13,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 mod builder;
 mod copier;
 mod http;
+mod runner;
 
 /// A minimal static site generator and web server.
 #[derive(Clap, Debug)]
@@ -38,10 +39,16 @@ struct Config {
 	pre_copier: Vec<copier::Copier>,
 
 	#[serde(default)]
+	pre_runner: Vec<runner::Runner>,
+
+	#[serde(default)]
 	builder: Vec<builder::Builder>,
 
 	#[serde(default)]
 	copier: Vec<copier::Copier>,
+
+	#[serde(default)]
+	runner: Vec<runner::Runner>,
 
 	#[serde(default)]
 	vhost: Vec<http::Vhost>,
@@ -70,7 +77,7 @@ async fn main() {
 		.start()
 		.unwrap_or_else(|err| {
 			eprintln!("Unable to start logger! {}", err);
-			process::exit(exitcode::UNAVAILABLE);
+			process::exit(exitcode::SOFTWARE);
 		});
 
 	trace!("started logger with default RUST_LOG set to {:?}", logstr);
@@ -94,7 +101,12 @@ async fn main() {
 		})
 	}
 
-	if config.builder.is_empty() || config.copier.is_empty() {
+	if config.builder.is_empty()
+		&& config.copier.is_empty()
+		&& config.pre_copier.is_empty()
+		&& config.runner.is_empty()
+		&& config.pre_runner.is_empty()
+	{
 		debug!("no page builders specified, skipping builder init");
 	}
 	for copier in &config.pre_copier {
@@ -102,6 +114,11 @@ async fn main() {
 			error!("Unable to run copier for {:?}! {}", copier.input_dir, err);
 			process::exit(exitcode::IOERR);
 		});
+	}
+	for runner in &config.pre_runner {
+		if !runner::run_runner(runner) {
+			process::exit(exitcode::UNAVAILABLE);
+		}
 	}
 	for builder in &config.builder {
 		builder::run_builder(builder).unwrap_or_else(|err| {
@@ -114,6 +131,11 @@ async fn main() {
 			error!("Unable to run copier for {:?}! {}", copier.input_dir, err);
 			process::exit(exitcode::IOERR);
 		});
+	}
+	for runner in &config.runner {
+		if !runner::run_runner(runner) {
+			process::exit(exitcode::UNAVAILABLE);
+		}
 	}
 
 	let http_server = http::run_http_server(false, &config.server, &config.headers, &config.vhost)
