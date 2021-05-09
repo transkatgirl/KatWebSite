@@ -6,6 +6,9 @@ $mobile_width: 50em;
 $navbar_width: 16em;
 $katwebsite_nav_style: 0;
 
+// todo: add support for navbar links to custom destinations
+// todo: add navbar category support
+
 {% include "katwebsite_theme_base" %} // note: this will automatically pull in modern_normalize.scss
 
 body {
@@ -41,6 +44,10 @@ article a:hover {
 
 blockquote {
 	border-left: .3em solid;
+}
+
+hr {
+	border: 0.05em solid #333;
 }
 
 ::selection {
