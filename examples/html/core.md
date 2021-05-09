@@ -173,7 +173,7 @@ command = "ls"
 args = ["-a", "-l"]
 ```
 
-`[[runner]]` blocks are only run after all Builders and Copiers are completed (but before the HTTP server is started). To run a Copier before any Builders are started (but after all `[[pre_copier]]` blocks have completed), use the `[[pre_runner]]` block (which behaves the same as a `[[runner]]` block in all other ways).
+`[[runner]]` blocks are only run after all Builders and Copiers are completed (but before the HTTP server is started). To run a Runner before any Builders are started (but after all `[[pre_copier]]` blocks have completed), use the `[[pre_runner]]` block (which behaves the same as a `[[runner]]` block in all other ways).
 
 Runners are run one-at-a-time, in the same order they're specified in. They are not sandboxed or resource limited by KatWebSite, and will start as children of the KatWebSite process. If a Runner exits with a non-zero status code, KatWebSite will exit with a fatal error.
 
