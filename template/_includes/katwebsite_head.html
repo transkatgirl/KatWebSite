@@ -12,6 +12,11 @@
 <script async src=main.js></script>
 {%- endif -%}
 
+{%- if page.data.highlight_js -%}
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/styles/default.min.css">
+<script async src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/highlight.min.js"></script>
+{%- endif -%}
+
 {%- if site.files contains "favicon.png" -%}
 <link rel="icon" sizes=48x48 href=favicon.png>
 {%- endif -%}

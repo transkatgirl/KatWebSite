@@ -12,6 +12,7 @@ layout = "default.html"
 lang = "en"
 site_name = "KatWebSite Demo"
 generator = "katwebsite"
+highlight_js = true
 
 [[vhost]]
 host = "localhost"

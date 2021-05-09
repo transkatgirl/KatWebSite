@@ -212,7 +212,6 @@ fn render_markdown(input: &str, renderers: &Renderers) -> String {
 	options.extension.description_lists = true;
 	options.extension.front_matter_delimiter = Some("---".to_string());
 	options.parse.smart = true;
-	options.render.github_pre_lang = true;
 	options.render.unsafe_ = true;
 
 	comrak::markdown_to_html(input, &options)
