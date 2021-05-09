@@ -14,7 +14,8 @@ If the documentation does not match the program's current behavior or is missing
 		2. [Configuring additional Render inputs](#configuring-additional-render-inputs)
 		3. [Configuring Liquid defaults](#configuring-liquid-defaults)
 	3. [Copier configuration](#copier-configuration)
-	4. [Web server configuration](#web-server-configuration)
+	4. [Runner configuration](#runner-configuration)
+	5. [Web server configuration](#web-server-configuration)
 		1. [Configuring HTTP redirects](#configuring-http-redirects)
 		2. [Configuring HTTP file handlers](#configuring-http-file-handlers)
 		3. [Configuring TLS](#configuring-tls)
@@ -154,6 +155,27 @@ overwrite = true
 ```
 
 `[[copier]]` blocks are only run after all Builders are completed (but before the HTTP server is started). To run a Copier before any Builders are started, use the `[[pre_copier]]` block (which behaves the same as a `[[copier]]` block in all other ways).
+
+---
+
+### Runner configuration
+In addition to Builders and Copiers, KatWebSite allows you to run arbitrary commands as part of your site generation process through the use of Runners. Runners inherit the same working directory, environment variables, and stdin/stdout/stderr streams as KatWebSite, and block indefinitely until the command has finished running.
+
+Each `[[runner]]` block can have up to two options:
+- `command` - The command to run. If this is not an absolute path, the `PATH` environment variable will be searched for the command.
+- `args` - A list of arguments to run the command with, defaults to no arguments.
+
+An example of a `[[runner]]` block is shown below:
+
+```toml
+[[runner]]
+command = "ls"
+args = ["-a", "-l"]
+```
+
+`[[runner]]` blocks are only run after all Builders and Copiers are completed (but before the HTTP server is started). To run a Copier before any Builders are started (but after all `[[pre_copier]]` blocks have completed), use the `[[pre_runner]]` block (which behaves the same as a `[[runner]]` block in all other ways).
+
+Runners are run one-at-a-time, in the same order they're specified in. They are not sandboxed or resource limited by KatWebSite, and will start as children of the KatWebSite process. If a Runner exits with a non-zero status code, KatWebSite will exit with a fatal error.
 
 ---
 
@@ -306,6 +328,8 @@ The [`RUST_LOG`](https://docs.rs/env_logger/0.8.3/env_logger/#enabling-logging) 
 The [`RUST_LOG_STYLE`](https://docs.rs/env_logger/0.8.3/env_logger/#disabling-colors) environment variable can be used to forcibly enable or disable colored logging messages.
 
 The [`FLEXI_LOGGER_PALETTE`](https://docs.rs/flexi_logger/0.17.1/flexi_logger/struct.Logger.html#method.set_palette) environment variable can be used to change the color palette used for logging.
+
+Note: Because [Runners](#runner-configuration) inherit KatWebSite's stdin/stdout/stderr, the **spawned commands will not be affected by KatWebSite's logging system** in any way. However, the spawned commands also inherit KatWebSite's environment variables, and *may* allow for controlling log verbosity through them.
 
 ---
 
